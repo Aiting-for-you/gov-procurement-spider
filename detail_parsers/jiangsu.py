@@ -15,6 +15,7 @@ class BaseParser:
     def parse(self, html: str, url: str):
         raise NotImplementedError
 
+# 解析器1：用于解析江苏省自己的域名 (ccgp-jiangsu.gov.cn) 的公告
 class JiangsuLocalGovParser(BaseParser):
     def parse(self, html: str):
         soup = BeautifulSoup(html, 'lxml')
@@ -95,6 +96,60 @@ class JiangsuLocalGovParser(BaseParser):
 
         return results
 
+# 解析器2：用于解析在中央域名 (ccgp.gov.cn) 发布的江苏地方公告 (/dfgg/)
+class JiangsuCentralLocalGovParser(BaseParser):
+    def parse(self, html: str):
+        soup = BeautifulSoup(html, 'lxml')
+        results = []
+        general_info = {}
+
+        try:
+            # 提取发布日期
+            title_h2 = soup.select_one('div.vF_detail_header > h2.tc, h2') # 兼容两种标题位置
+            if title_h2:
+                date_text_tag = title_h2.find_next_sibling('p')
+                if date_text_tag:
+                    date_match = re.search(r'(\d{4}年\d{2}月\d{2}日)', date_text_tag.get_text())
+                    if date_match:
+                        general_info['发布日期'] = date_match.group(1)
+
+            # 提取项目编号和名称
+            general_info['项目号'] = soup.find(lambda tag: tag.name == 'h2' and '项目编号' in tag.get_text()).get_text(strip=True).replace('一、项目编号：', '')
+            general_info['项目名称'] = soup.find(lambda tag: tag.name == 'h2' and '项目名称' in tag.get_text()).get_text(strip=True).replace('二、项目名称：', '')
+
+            # 提取中标信息
+            bid_info_table = soup.find(lambda tag: tag.name == 'h2' and '中标（成交）信息' in tag.get_text()).find_next('table')
+            if bid_info_table:
+                rows = bid_info_table.find_all('tr')
+                if len(rows) > 1:
+                    cols = rows[1].find_all('td')
+                    general_info['供应商名称'] = cols[1].get_text(strip=True)
+                    general_info['中标金额'] = cols[5].get_text(strip=True) # 使用元为单位的金额
+
+            # 提取主要标的信息
+            main_info_table = soup.find(lambda tag: tag.name == 'h2' and '主要标的信息' in tag.get_text()).find_next('table')
+            if main_info_table:
+                # 信息被不规范地放在一个单元格里
+                cell_text = main_info_table.find_all('tr')[1].find('td').get_text(strip=True)
+                item = {
+                    '名称': re.search(r'名称：([^品牌]+)', cell_text).group(1).strip() if re.search(r'名称：([^品牌]+)', cell_text) else 'N/A',
+                    '品牌': re.search(r'品牌（如有）：([^规]+)', cell_text).group(1).strip() if re.search(r'品牌（如有）：([^规]+)', cell_text) else 'N/A',
+                    '规格型号': re.search(r'规格型号：([^数]+)', cell_text).group(1).strip() if re.search(r'规格型号：([^数]+)', cell_text) else 'N/A',
+                    '数量': re.search(r'数量：([^单]+)', cell_text).group(1).strip() if re.search(r'数量：([^单]+)', cell_text) else 'N/A',
+                    '单价': re.search(r'单价：(.*)', cell_text).group(1).strip() if re.search(r'单价：(.*)', cell_text) else 'N/A',
+                }
+                results.append({**general_info, **item})
+
+        except Exception as e:
+            print(f"解析中央域名下的江苏地方公告时出错: {e}")
+
+        if not results:
+            empty_item = { '名称': 'N/A', '品牌': 'N/A', '规格型号': 'N/A', '数量': 'N/A', '单价': 'N/A'}
+            results.append({**general_info, **empty_item})
+
+        return results
+
+# 解析器3：用于解析在中央域名 (ccgp.gov.cn) 发布的中央公告 (/zygg/)
 class JiangsuCentralGovParser(BaseParser):
     def parse(self, html: str):
         soup = BeautifulSoup(html, 'lxml')
@@ -150,14 +205,18 @@ class JiangsuCentralGovParser(BaseParser):
             
         return results
 
+# --- 总入口函数 ---
 def get_parser_for_url(url: str):
-    # 优先根据域名判断是否为江苏地方公告，这是最可靠的标识
+    """根据URL特征返回最合适的解析器实例"""
     if "ccgp-jiangsu.gov.cn" in url:
+        # 江苏省自己的域名，最优先判断
         return JiangsuLocalGovParser()
-    # 如果不是地方公告，再检查是否为中央公告
+    elif "/dfgg/" in url:
+        # 在中央域名下，但路径是地方公告
+        return JiangsuCentralLocalGovParser()
     elif "/zygg/" in url:
+        # 在中央域名下，路径是中央公告
         return JiangsuCentralGovParser()
-    # 均不匹配则返回 None
     return None
 
 def get_dynamic_html(url, parser_type='local'): # 签名保持一致
