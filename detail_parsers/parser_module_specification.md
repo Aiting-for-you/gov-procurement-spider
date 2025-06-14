@@ -14,7 +14,7 @@
 ## 3. 模块内部结构
 
 每个省份的解析模块 (`.py` 文件) 必须包含以下三个核心组件：
-1.  两个解析器类 (一个处理地方公告，一个处理中央公告)。
+1.  一个或多个解析器类 (Parser Classes)。
 2.  一个 `get_parser_for_url(url)` 函数。
 3.  一个 `get_dynamic_html(url, parser_type)` 函数。
 
@@ -22,9 +22,12 @@
 
 ### 3.1 解析器类 (Parser Classes)
 
-每个模块必须定义两个类，分别用于解析地方公告和中央公告。
-
--   **命名规范**: `[ProvinceName]LocalGovParser` 和 `[ProvinceName]CentralGovParser`，例如 `ShandongLocalGovParser`。
+- **核心思想**: 一个省份的公告可能发布在多个不同的网站上（如省自己的采购网、国家统一的采购网），或者同一网站的不同栏目（如地方公告、中央公告）页面结构也不同。因此，**必须为每一种独特的页面布局创建一个专属的解析器类**。
+- **类数量**: 一个模块文件可能包含2个、3个甚至更多的解析器类。例如，`jiangsu.py` 就包含了三个解析器，分别处理：
+    1.  江苏省自己域名(`ccgp-jiangsu.gov.cn`)的公告。
+    2.  发布在中央域名下(`ccgp.gov.cn`)的江苏**地方**公告 (`/dfgg/`)。
+    3.  发布在中央域名下(`ccgp.gov.cn`)的江苏**中央**公告 (`/zygg/`)。
+-   **命名规范**: 建议清晰地描述其用途，例如 `HubeiLocalGovParser` (湖北地方) 和 `HubeiCentralGovParser` (湖北中央)。
 -   **核心方法**: 每个类必须实现一个 `parse(self, html: str)` 方法。
 
 #### `parse(self, html: str)` 方法详解
@@ -67,12 +70,25 @@
 -   **功能**: 根据传入的公告详情页 `url`，判断其类型（中央或地方），并返回对应解析器类的一个**实例**。
 -   **函数签名**: `def get_parser_for_url(url: str):`
 -   **实现逻辑与最佳实践**:
-    - **首选策略**: 优先使用公告来源网站的**独特域名** (例如, `ccgp-jiangsu.gov.cn`) 作为判断地方公告的依据。这比判断URL路径更可靠、更精确。
-    - **备用策略**: 如果没有独特域名，再考虑检查URL路径中是否包含 `/dfgg/` (地方) 或 `/zygg/` (中央) 等特征片段。
+    - **判断顺序至关重要**。必须将最特殊、最精确的URL特征放在最前面判断。
+    - **最佳实践范例 (来自`jiangsu.py`)**:
+      ```python
+      def get_parser_for_url(url: str):
+          """根据URL特征返回最合适的解析器实例"""
+          if "ccgp-jiangsu.gov.cn" in url:
+              # 1. 最优先判断省份自己的独特域名
+              return JiangsuLocalGovParser()
+          elif "/dfgg/" in url:
+              # 2. 其次判断是否为在中央网站发布的"地方公告"
+              return JiangsuCentralLocalGovParser()
+          elif "/zygg/" in url:
+              # 3. 最后判断是否为"中央公告"
+              return JiangsuCentralGovParser()
+          return None # 所有情况均不匹配
+      ```
 -   **返回值**:
-    -   如果 `url` 是地方公告，返回 `[ProvinceName]LocalGovParser()` 的实例。
-    -   如果 `url` 是中央公告，返回 `[ProvinceName]CentralGovParser()` 的实例。
-    -   如果无法判断类型，返回 `None`。
+    -   返回一个对应解析器类的**实例**。
+    -   如果无法为URL找到合适的解析器，返回 `None`。
 
 ---
 
