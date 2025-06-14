@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+.cursor/
+
+# Output files
+/output/
+*.csv
+*.log 
