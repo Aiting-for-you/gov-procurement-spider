@@ -9,9 +9,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+import importlib
 
 from url_builder import build_ccgp_search_url
-from detail_parsers.chongqing import get_parser_for_url, get_dynamic_html
 
 
 def get_project_links_from_page(driver):
@@ -86,12 +86,36 @@ def get_project_links_from_page(driver):
 
 def main():
     print("📌 欢迎使用中国政府采购网爬虫")
-    province = input("请输入省份（如 江苏）：").strip()
+
+    province_map = {
+        "重庆": "chongqing",
+        "江苏": "jiangsu",
+        "广东": "guangdong",
+        "山东": "shandong",
+        "湖北": "hubei",
+        "浙江": "zhejiang"
+
+    province_name = input(f"请输入省份 (支持: {', '.join(province_map.keys())}): ").strip()
+    if province_name not in province_map:
+        print(f"错误：不支持的省份 '{province_name}'。")
+        return
+        
+    province_pinyin = province_map[province_name]
+
     start_date = input("请输入开始日期（YYYY-MM-DD）：").strip()
     end_date = input("请输入结束日期（YYYY-MM-DD）：").strip()
     keyword = "空调"
 
-    print(f"\n🔍 正在抓取 {province} 地区，关键词“{keyword}” 中标公告")
+    try:
+        parser_module = importlib.import_module(f"detail_parsers.{province_pinyin}")
+        get_parser_for_url = getattr(parser_module, 'get_parser_for_url')
+        get_dynamic_html = getattr(parser_module, 'get_dynamic_html')
+        print(f"✅ 成功加载模块: detail_parsers.{province_pinyin}")
+    except (ImportError, AttributeError) as e:
+        print(f"❌ 无法加载省份 '{province_name}' 的解析模块: {e}")
+        return
+
+    print("\n🔍 正在抓取 " + province_name + " 地区，关键词" + keyword + " 中标公告")
     print(f"📅 时间范围：{start_date} ~ {end_date}")
 
     chrome_options = Options()
@@ -106,7 +130,7 @@ def main():
     page = 1
 
     while True:
-        url = build_ccgp_search_url(province, start_date, end_date, keyword, page)
+        url = build_ccgp_search_url(province_name, start_date, end_date, keyword, page)
         print(f"\n📄 第 {page} 页：{url}")
         driver.get(url)
 
@@ -137,7 +161,7 @@ def main():
                     for data_dict in parsed_data_list:
                         data_dict.update({
                             "链接": link,
-                            "省份": province
+                            "省份": province_name
                         })
                     all_data.extend(parsed_data_list)
                 else:
@@ -160,7 +184,7 @@ def main():
 
     if all_data:
         df = pd.DataFrame(all_data)
-        filename = f"output/中标公告_{keyword}_{province}_{start_date}_to_{end_date}.csv"
+        filename = f"output/中标公告_{keyword}_{province_name}_{start_date}_to_{end_date}.csv"
         df.to_csv(filename, index=False, encoding='utf-8-sig')
         print(f"\n✅ 成功抓取 {len(all_data)} 条数据，已保存至：{filename}")
     else:
