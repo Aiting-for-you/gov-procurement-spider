@@ -27,10 +27,22 @@ A sophisticated and modular web scraping solution for extracting and parsing pub
 - **Robust Parsing Engine**: Utilizes `Selenium` and `BeautifulSoup` to handle complex, dynamic, and varied page structures.
 - **Data Export**: Saves extracted data into structured `.csv` files, ready for analysis.
 - **Extensible**: Includes a clear specification (`parser_module_specification.md`) for creating new parser modules.
+- **Easy to Use**: Packaged as a standalone `.exe`. No need to install Python or any dependencies. Just download and run!
 
 ---
 
-## 🚀 Getting Started
+## 💾 Download
+
+For the easiest way to get started, simply download the latest release from the **[Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases)** page.
+
+1.  Go to the [Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases) page.
+2.  Download the `GovSpider.zip` file from the latest release.
+3.  Unzip the file.
+4.  Double-click `政府采购爬虫.exe` to run the application.
+
+---
+
+## 🚀 Getting Started (for Developers)
 
 ### Prerequisites
 

@@ -30,7 +30,18 @@
 
 ---
 
-## 🚀 快速开始
+## 💾 下载
+
+最简单的使用方式是直接从 **[Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases)** 页面下载最新版本。
+
+1.  访问 [Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases) 页面。
+2.  从最新版本中下载 `GovSpider.zip` 文件。
+3.  解压缩该文件。
+4.  双击 `政府采购爬虫.exe` 即可运行。
+
+---
+
+## 🚀 快速开始 (面向开发者)
 
 ### 环境要求
 
