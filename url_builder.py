@@ -26,6 +26,6 @@ def build_ccgp_search_url(province: str, start_date: str, end_date: str, keyword
         f"&kw={quote(keyword)}"
         f"&start_time={start_date.replace('-', ':')}"
         f"&end_time={end_date.replace('-', ':')}"
-        f"&timeType=5&displayZone={quote(province)}&zoneId={zone_id}"
+        f"&timeType=6&displayZone={quote(province)}&zoneId={zone_id}"
         f"&pppStatus=0&agentName="
     )
