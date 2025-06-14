@@ -11,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 
 from url_builder import build_ccgp_search_url
-from detail_parsers import PARSER_MAP
+from detail_parsers.chongqing import get_parser_for_url, get_dynamic_html
 
 
 def get_project_links_from_page(driver):
@@ -84,27 +84,6 @@ def get_project_links_from_page(driver):
     return unique_links
 
 
-def extract_detail(driver, link, province):
-    parser_class = PARSER_MAP.get(province)
-    if not parser_class:
-        print(f"❌ 没有 {province} 的解析器")
-        return None
-    parser = parser_class()
-    try:
-        driver.get(link)
-        time.sleep(2)
-        html = driver.page_source
-        data = parser.parse(html)
-        data.update({
-            "链接": link,
-            "省份": province
-        })
-        return data
-    except Exception as e:
-        print(f"⚠️ 解析失败: {e}")
-        return None
-
-
 def main():
     print("📌 欢迎使用中国政府采购网爬虫")
     province = input("请输入省份（如 江苏）：").strip()
@@ -138,11 +117,36 @@ def main():
 
         for i, link in enumerate(links, 1):
             print(f"🔗 [{i}/{len(links)}] 正在抓取详情页: {link}")
-            data = extract_detail(driver, link, province)
-            if data:
-                all_data.append(data)
+            try:
+                parser = get_parser_for_url(link)
+                if not parser:
+                    print(f"    [警告] 无法为链接找到合适的解析器，已跳过。")
+                    continue
+                
+                parser_type = 'local' if "dfgg" in link else 'central'
+                detail_html = get_dynamic_html(link, parser_type=parser_type)
+                
+                if not detail_html:
+                    print(f"    [警告] 无法获取链接的HTML内容，已跳过。")
+                    continue
+                    
+                parsed_data_list = parser.parse(detail_html)
+                if parsed_data_list:
+                    print(f"    ✅ 解析成功，获得 {len(parsed_data_list)} 条记录。")
+                    # Add common info to each record
+                    for data_dict in parsed_data_list:
+                        data_dict.update({
+                            "链接": link,
+                            "省份": province
+                        })
+                    all_data.extend(parsed_data_list)
+                else:
+                    print(f"    [警告] 解析器未能从此链接提取到数据。")
 
-        # 尝试点击“下一页”
+            except Exception as e:
+                print(f"    ❌ 处理链接 {link} 时发生未知错误: {e}")
+
+        # 尝试点击"下一页"
         try:
             next_button = driver.find_element(By.LINK_TEXT, "下一页")
             driver.execute_script("arguments[0].click();", next_button)

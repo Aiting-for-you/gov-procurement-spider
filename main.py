@@ -94,7 +94,8 @@ def main():
         "山东": "shandong",
         "湖北": "hubei",
         "浙江": "zhejiang"
-
+    }
+    
     province_name = input(f"请输入省份 (支持: {', '.join(province_map.keys())}): ").strip()
     if province_name not in province_map:
         print(f"错误：不支持的省份 '{province_name}'。")
@@ -115,15 +116,12 @@ def main():
         print(f"❌ 无法加载省份 '{province_name}' 的解析模块: {e}")
         return
 
-    print("\n🔍 正在抓取 " + province_name + " 地区，关键词" + keyword + " 中标公告")
+    print(f'\n🔍 正在抓取 {province_name} 地区，关键词“{keyword}” 中标公告')
     print(f"📅 时间范围：{start_date} ~ {end_date}")
 
     chrome_options = Options()
-    # 开启可视化浏览器调试
-    # chrome_options.add_argument("--headless")
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--no-sandbox')
-
     driver = webdriver.Chrome(options=chrome_options)
 
     all_data = []
@@ -157,7 +155,6 @@ def main():
                 parsed_data_list = parser.parse(detail_html)
                 if parsed_data_list:
                     print(f"    ✅ 解析成功，获得 {len(parsed_data_list)} 条记录。")
-                    # Add common info to each record
                     for data_dict in parsed_data_list:
                         data_dict.update({
                             "链接": link,
@@ -170,7 +167,6 @@ def main():
             except Exception as e:
                 print(f"    ❌ 处理链接 {link} 时发生未知错误: {e}")
 
-        # 尝试点击"下一页"
         try:
             next_button = driver.find_element(By.LINK_TEXT, "下一页")
             driver.execute_script("arguments[0].click();", next_button)

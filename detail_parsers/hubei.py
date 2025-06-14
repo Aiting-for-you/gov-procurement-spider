@@ -63,17 +63,20 @@ class HubeiLocalGovParser(BaseParser):
                 if main_info_table:
                     rows = main_info_table.find_all('tr')
                     if len(rows) > 1:
-                        for data_row in rows[1:]:
-                            cols = data_row.find_all('td')
-                            if len(cols) > 6:
-                                item = {
-                                    '名称': cols[2].get_text(strip=True) or 'N/A',
-                                    '品牌': cols[3].get_text(strip=True) or 'N/A',
-                                    '规格型号': cols[4].get_text(strip=True) or 'N/A',
-                                    '数量': cols[5].get_text(strip=True) or 'N/A',
-                                    '单价': cols[6].get_text(strip=True) or 'N/A',
-                                }
-                                results.append({**general_info, **item})
+                        # 只取第一条有效数据行
+                        first_data_row = rows[1]
+                        cols = first_data_row.find_all('td')
+                        if len(cols) > 6:
+                            item = {
+                                '名称': cols[2].get_text(strip=True) or 'N/A',
+                                '品牌': cols[3].get_text(strip=True) or 'N/A',
+                                '规格型号': cols[4].get_text(strip=True) or 'N/A',
+                                '数量': cols[5].get_text(strip=True) or 'N/A',
+                                '单价': cols[6].get_text(strip=True) or 'N/A',
+                            }
+                            # 将通用信息和标的信息合并
+                            final_item = {**general_info, **item}
+                            results.append(final_item)
 
         except Exception as e:
             print(f"解析湖北地方公告时出错: {e}")
@@ -135,18 +138,19 @@ class HubeiCentralGovParser(BaseParser):
                 if table:
                     rows = table.find_all('tr')
                     if len(rows) > 1:
-                        # 中央公告的表格结构也比较规范
-                        for data_row in rows[1:]:
-                            cols = data_row.find_all('td')
-                            if len(cols) > 6:
-                                item = {
-                                    '名称': cols[2].get_text(strip=True),
-                                    '品牌': cols[3].get_text(strip=True),
-                                    '规格型号': cols[4].get_text(strip=True),
-                                    '数量': cols[5].get_text(strip=True),
-                                    '单价': cols[6].get_text(strip=True),
-                                }
-                                results.append({**general_info, **item})
+                        # 只取第一条有效数据行
+                        first_data_row = rows[1]
+                        cols = first_data_row.find_all('td')
+                        if len(cols) > 6:
+                            item = {
+                                '名称': cols[2].get_text(strip=True) or 'N/A',
+                                '品牌': cols[3].get_text(strip=True) or 'N/A',
+                                '规格型号': cols[4].get_text(strip=True) or 'N/A',
+                                '数量': cols[5].get_text(strip=True) or 'N/A',
+                                '单价': cols[6].get_text(strip=True) or 'N/A',
+                            }
+                            final_item = {**general_info, **item}
+                            results.append(final_item)
         except Exception as e:
             print(f"解析湖北中央公告表格信息出错: {e}")
 
@@ -190,3 +194,5 @@ def get_dynamic_html(url, parser_type='local'):
         if driver:
             driver.quit()
     return html
+
+# The final validation test code has been removed.
