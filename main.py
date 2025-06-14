@@ -1,7 +1,6 @@
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import WebDriverException
 from urllib3.exceptions import MaxRetryError
@@ -30,22 +29,22 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
         try:
             parser_module = importlib.import_module(f"detail_parsers.{province_pinyin}")
             ParserClass = getattr(parser_module, 'Parser')
+            logger.put(f"✅ 成功加载模块: detail_parsers.{province_pinyin}")
         except (ImportError, AttributeError) as e:
             logger.put(f"错误：无法为省份 '{province_cn}' 加载解析器模块。请检查 'detail_parsers/{province_pinyin}.py' 是否存在且包含 'Parser' 类。")
             logger.put(f"详细错误: {e}")
             logger.put("CRAWL_FAILED")
             return
             
-        chrome_options = Options()
+        chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--log-level=3")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
         service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-
-        with driver:
+        
+        with webdriver.Chrome(service=service, options=chrome_options) as driver:
             parser_instance = ParserClass(driver, build_ccgp_search_url, logger.put, province_cn, keyword, start_date, end_date)
             results = parser_instance.get_and_parse_results()
             
@@ -69,8 +68,7 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
 
     logger.put("CRAWL_COMPLETE")
 
-if __name__ == '__main__':
-    
+def main_cli():
     PROVINCE_PINYIN_MAP = {
         "安徽": "anhui", "重庆": "chongqing", "广东": "guangdong", "广西": "guangxi", 
         "河北": "hebei", "湖北": "hubei", "江苏": "jiangsu", "山东": "shandong", 
@@ -105,3 +103,6 @@ if __name__ == '__main__':
         end_date,
         DummyQueue()
     )
+
+if __name__ == '__main__':
+    main_cli()
