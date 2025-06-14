@@ -10,6 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+import pandas as pd
 
 class BaseParser:
     def parse(self, html: str):
@@ -23,60 +24,72 @@ class HubeiLocalGovParser(BaseParser):
         general_info = {}
 
         try:
-            # 提取发布日期
-            date_text_tag = soup.find('p', class_='tc')
-            if not date_text_tag:
-                 header = soup.select_one('div.vF_detail_header')
-                 if header:
-                    date_text_tag = header.find_next_sibling('p')
+            # 修正后的定位逻辑
+            # 信息主要在公告概要的表格和正文内容中
+            summary_table = soup.select_one('div.table')
+            content_div = soup.select_one('div.vF_detail_content')
+            
+            # 从公告概要表格中提取信息
+            if summary_table:
+                summary_text = summary_table.get_text('\n', strip=True)
+                def find_in_summary(pattern, default='N/A'):
+                    match = re.search(pattern, summary_text, re.S)
+                    return match.group(1).strip() if match else default
+                
+                general_info['项目名称'] = find_in_summary(r"采购项目名称\n(.*?)\n")
+                general_info['中标金额'] = find_in_summary(r"总中标金额\n(.*?)\n")
+            
+            # 从正文内容中提取信息
+            if content_div:
+                content_text = content_div.get_text('\n', strip=True)
+                def find_in_content(pattern, default='N/A'):
+                    match = re.search(pattern, content_text, re.S)
+                    return match.group(1).strip() if match else default
 
-            if date_text_tag:
-                date_match = re.search(r'(\d{4}年\d{2}月\d{2}日)', date_text_tag.get_text())
+                general_info['项目号'] = find_in_content(r"项目编号[:：]\s*(.*?)\n")
+                general_info['供应商名称'] = find_in_content(r"供应商名称[:：]\s*(.*?)\n")
+
+            # 提取发布日期
+            date_tag = soup.select_one('.vF_detail_header p, .table p.tc')
+            if date_tag:
+                date_match = re.search(r'(\d{4}年\d{2}月\d{2}日)', date_tag.get_text())
                 if date_match:
                     general_info['发布日期'] = date_match.group(1)
-
-            # 提取项目编号和名称
-            content_div = soup.select_one('.table, .vF_detail_content')
-            if content_div:
-                general_info['项目号'] = content_div.find(lambda tag: ('一、项目编号' in tag.get_text() or '项目编号：' in tag.get_text())).get_text(strip=True).split('：')[-1]
-                general_info['项目名称'] = content_div.find(lambda tag: ('二、项目名称' in tag.get_text() or '项目名称：' in tag.get_text())).get_text(strip=True).split('：')[-1]
-                
-                # 提取中标信息
-                supplier_tag = content_div.find(lambda tag: '供应商名称' in tag.get_text())
-                if supplier_tag:
-                    general_info['供应商名称'] = supplier_tag.get_text(strip=True).split('：')[-1]
-
-                amount_tag = content_div.find(lambda tag: '中标（成交）金额' in tag.get_text())
-                if amount_tag:
-                    general_info['中标金额'] = amount_tag.get_text(strip=True).split('：')[-1]
             
             # 提取主要标的信息
-            main_info_h2 = soup.find(lambda tag: tag.name in ['h2', 'strong'] and '主要标的信息' in tag.get_text())
+            main_info_h2 = soup.find(lambda tag: tag.name in ['h2', 'strong', 'b'] and '四、主要标的信息' in tag.get_text())
             if main_info_h2:
                 main_info_table = main_info_h2.find_next('table')
                 if main_info_table:
                     rows = main_info_table.find_all('tr')
                     if len(rows) > 1:
-                        # 从第二行开始是数据
                         for data_row in rows[1:]:
                             cols = data_row.find_all('td')
-                            # 湖北的表格结构更规范
                             if len(cols) > 6:
                                 item = {
-                                    '名称': cols[2].get_text(strip=True),
-                                    '品牌': cols[3].get_text(strip=True),
-                                    '规格型号': cols[4].get_text(strip=True),
-                                    '数量': cols[5].get_text(strip=True),
-                                    '单价': cols[6].get_text(strip=True),
+                                    '名称': cols[2].get_text(strip=True) or 'N/A',
+                                    '品牌': cols[3].get_text(strip=True) or 'N/A',
+                                    '规格型号': cols[4].get_text(strip=True) or 'N/A',
+                                    '数量': cols[5].get_text(strip=True) or 'N/A',
+                                    '单价': cols[6].get_text(strip=True) or 'N/A',
                                 }
                                 results.append({**general_info, **item})
 
         except Exception as e:
             print(f"解析湖北地方公告时出错: {e}")
 
+        # 如果没有从表格中解析出具体条目，也要保证返回一条包含通用信息的数据
         if not results:
-            empty_item = { '名称': 'N/A', '品牌': 'N/A', '规格型号': 'N/A', '数量': 'N/A', '单价': 'N/A'}
-            results.append({**general_info, **empty_item})
+            # 填充所有在 general_info 中还未找到的字段
+            final_item = {
+                "发布日期": general_info.get("发布日期", "N/A"),
+                "项目号": general_info.get("项目号", "N/A"),
+                "项目名称": general_info.get("项目名称", "N/A"),
+                "供应商名称": general_info.get("供应商名称", "N/A"),
+                "中标金额": general_info.get("中标金额", "N/A"),
+                '名称': 'N/A', '品牌': 'N/A', '规格型号': 'N/A', '数量': 'N/A', '单价': 'N/A'
+            }
+            results.append(final_item)
 
         return results
 
@@ -85,31 +98,36 @@ class HubeiCentralGovParser(BaseParser):
     def parse(self, html: str):
         # 经分析，湖北中央公告与江苏中央公告页面结构高度一致，直接复用其逻辑
         soup = BeautifulSoup(html, 'lxml')
+        results = []
         general_info = {}
         try:
             content_div = soup.select_one('.vF_detail_content')
             if content_div:
                 content_text = content_div.get_text('\n', strip=True)
-                def find_value(pattern):
+                def find_value(pattern, default='N/A'):
                     match = re.search(pattern, content_text, re.DOTALL)
-                    return match.group(1).strip() if match else 'N/A'
+                    return match.group(1).strip() if match else default
 
                 general_info['项目号'] = find_value(r"项目编号[:：\s]+(.*?)\n")
                 general_info['项目名称'] = find_value(r"项目名称[:：\s]+(.*?)\n")
                 general_info['供应商名称'] = find_value(r"供应商名称[:：\s]+(.*?)\n")
                 general_info['中标金额'] = find_value(r"中标（成交）金额[:：\s]+(.*?)\n")
             
-            title_h2 = soup.select_one('div.vF_detail_header > h2.tc')
-            if title_h2:
-                p_tag = title_h2.find_next_sibling('p')
-                if p_tag:
-                    date_span = p_tag.find('span', id='pubTime')
-                    if date_span:
-                        general_info['发布日期'] = date_span.get_text(strip=True).split(' ')[0]
+            header_div = soup.select_one('div.vF_detail_header')
+            if header_div:
+                date_tag = header_div.find('span', id='pubTime')
+                if date_tag:
+                    general_info['发布日期'] = date_tag.get_text(strip=True).split(' ')[0]
+                else: # 备用日期提取
+                    p_tag = header_div.find_next_sibling('p')
+                    if p_tag:
+                         date_match = re.search(r'(\d{4}年\d{2}月\d{2}日)', p_tag.get_text())
+                         if date_match:
+                            general_info['发布日期'] = date_match.group(1)
+
         except Exception as e:
             print(f"解析湖北中央公告常规信息出错: {e}")
             
-        results = []
         try:
             bid_title = soup.find(lambda tag: tag.name in ['p', 'strong'] and '主要标的信息' in tag.get_text())
             if bid_title:
