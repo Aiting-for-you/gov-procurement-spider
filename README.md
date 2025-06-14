@@ -2,8 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![UI Framework](https://img.shields.io/badge/UI-CustomTkinter-blue)](https://github.com/TomSchimansky/CustomTkinter)
 
-A sophisticated and modular web scraping solution designed to extract and parse public procurement announcements from the official Chinese Government Procurement website (ccgp.gov.cn). This tool is built to handle complex, dynamic, and varied page structures across different provinces, providing structured data from announcements.
+A sophisticated and modular web scraping solution for extracting and parsing public procurement announcements from China's official government procurement website (ccgp.gov.cn). This tool features a user-friendly graphical interface and a robust, extensible backend, making it easy to gather structured data across various provinces.
 
 ---
 
@@ -15,19 +16,17 @@ A sophisticated and modular web scraping solution designed to extract and parse 
 
 ## ✨ Features
 
-- **Multi-Province Support**: Comes with dedicated parsers for multiple provinces including Guangdong, Zhejiang, Shandong, Sichuan, Hebei, and more.
-- **Modular Architecture**: Each province's parser is a self-contained module, making it easy to extend, maintain, and debug. A central factory automatically selects the correct parser based on the announcement URL.
-- **Robust Parsing Engine**:
-    - Utilizes `Selenium` to handle dynamically loaded JavaScript content, ensuring all data is captured.
-    - Employs `BeautifulSoup` with `lxml` for efficient and resilient HTML parsing.
-    - Intelligently handles_ various complex layouts, such as:
-        - Announcements with multiple bid packages.
-        - Tables with multi-line cells (`<br>` tags).
-        - Non-tabular data separated by various delimiters.
-        - Inconsistent HTML structures between central and local government announcements.
-- **Dynamic & Smart**: Automatically adapts to different page structures (e.g., single vs. multi-package bids) within the same province module.
-- **Data Export**: The main application logic (in `main.py`) is designed to save the extracted data into structured `.csv` files.
-- **Extensible**: Includes a clear specification (`parser_module_specification.md`) for creating new parser modules for additional provinces.
+- **User-Friendly GUI**: An intuitive graphical interface built with `CustomTkinter` that allows you to:
+    - Select provinces from a dropdown menu.
+    - Freely enter any search keywords.
+    - Choose date ranges with a calendar.
+    - View real-time logs directly in the app.
+- **Multi-Province Support**: Comes with dedicated parsers for multiple provinces. The current supported list includes:
+    > Anhui, Chongqing, Guangdong, Guangxi, Hebei, Hubei, Jiangsu, Shandong, Sichuan, Zhejiang
+- **Modular Architecture**: Each province's parser is a self-contained module, making it easy to extend, maintain, and debug.
+- **Robust Parsing Engine**: Utilizes `Selenium` and `BeautifulSoup` to handle complex, dynamic, and varied page structures.
+- **Data Export**: Saves extracted data into structured `.csv` files, ready for analysis.
+- **Extensible**: Includes a clear specification (`parser_module_specification.md`) for creating new parser modules.
 
 ---
 
@@ -48,11 +47,10 @@ A sophisticated and modular web scraping solution designed to extract and parse 
 
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
-    python -m venv venv
     # On Windows
-    venv\Scripts\activate
+    python -m venv venv && venv\Scripts\activate
     # On macOS/Linux
-    source venv/bin/activate
+    python -m venv venv && source venv/bin/activate
     ```
 
 3.  **Install the dependencies:**
@@ -64,18 +62,32 @@ A sophisticated and modular web scraping solution designed to extract and parse 
 
 ## 🛠️ Usage
 
-The main entry point for running the spider is `main.py`. It is configured to:
-1.  Build a list of search URLs for different provinces and keywords (e.g., "空调" - air conditioner).
-2.  Scrape the search result pages to find links to individual announcement detail pages.
-3.  For each detail page, dynamically select the appropriate provincial parser.
-4.  Parse the page to extract structured data.
-5.  Save the results into a `.csv` file in the `output/` directory.
+### 1. Graphical User Interface (Recommended)
 
-To run the spider, simply execute the `main.py` script:
+The easiest way to use the spider is through the GUI.
+
+**Launch the application:**
+```bash
+python gui_app.py
+```
+
+**How to use:**
+1.  Select a province from the dropdown menu.
+2.  Enter your desired search keyword.
+3.  Set the start and end dates using the calendar widgets.
+4.  Click the "Start Crawling" button.
+5.  Monitor the progress in the log window.
+6.  Find the results in the `output/` directory upon completion.
+
+### 2. Command-Line Interface (for advanced users)
+
+You can also run the spider directly from the command line.
+
+**Launch the CLI:**
 ```bash
 python main.py
 ```
-Check the `output/` folder for the resulting CSV files.
+The script will then prompt you to enter the province (in Chinese), keyword, start date, and end date.
 
 ---
 
@@ -84,23 +96,9 @@ Check the `output/` folder for the resulting CSV files.
 To add support for a new province, follow these steps:
 
 1.  **Create a new Python file** in the `detail_parsers/` directory (e.g., `new_province.py`).
-2.  **Implement a parser class** inside this file that inherits from `BaseParser` and implements the `parse(self, html: str)` method.
-3.  **Follow the logic outlined in `parser_module_specification.md`**. Your parser should handle the specific HTML structure of the new province's announcements. Use existing parsers (like `sichuan.py` or `hebei.py`) as a reference for handling complex cases.
-4.  **Add a factory function** `get_parser_for_url(url: str)` in your new file. This function will instantiate and return your new parser.
-5.  **Update the main factory** in `main.py` to include your new province. Add an `elif` condition to check for the province's URL pattern and import your new `get_parser_for_url` function.
-
-```python
-# In main.py, inside the get_detail_parser function
-
-# ... existing code ...
-elif 'sichuan' in province_identifier: # Example
-    from detail_parsers.sichuan import get_parser_for_url
-    return get_parser_for_url(url)
-elif 'new_province' in province_identifier: # Add your new province here
-    from detail_parsers.new_province import get_parser_for_url
-    return get_parser_for_url(url)
-# ...
-``` 
+2.  **Implement a parser class** that inherits from `BaseParser` and implements the `parse(self, html: str)` method, following the logic in `parser_module_specification.md`.
+3.  **Update the province map** in `gui_app.py` and `main.py` to include the Chinese name and pinyin of the new province.
+4.  That's it! The GUI and CLI will automatically detect the new parser file and add it to the selection list.
 
 ---
 
@@ -109,7 +107,7 @@ elif 'new_province' in province_identifier: # Add your new province here
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 -   **Reporting Issues**: If you find a bug or have a suggestion, please open an issue.
--   **Adding Parsers**: The most valuable way to contribute is by adding a new parser for a province not yet supported. Please follow the `parser_module_specification.md` guide.
+-   **Adding Parsers**: The most valuable way to contribute is by adding a new parser for a province not yet supported.
 -   **Pull Requests**: Feel free to fork the repo and submit a pull request for any improvements.
 
 ---
