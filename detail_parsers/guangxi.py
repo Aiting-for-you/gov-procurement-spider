@@ -1,5 +1,5 @@
-# 山东省详情页解析器
-# detail_parsers/shandong.py
+# 广西详情页解析器
+# detail_parsers/guangxi.py
 
 from bs4 import BeautifulSoup
 import re
@@ -15,8 +15,8 @@ class BaseParser:
     def parse(self, html: str):
         raise NotImplementedError
 
-# --- 统一的山东公告解析器 (借鉴浙江经验) ---
-class ShandongGovParser(BaseParser):
+# --- 统一的广西公告解析器 (借鉴山东/浙江经验) ---
+class GuangxiGovParser(BaseParser):
     def parse(self, html: str):
         soup = BeautifulSoup(html, 'lxml')
         results = []
@@ -48,7 +48,7 @@ class ShandongGovParser(BaseParser):
                         final_item = {**general_info, **item}
                         results.append(final_item)
         except Exception as e:
-            print(f"解析山东公告时出错: {e}")
+            print(f"解析广西公告时出错: {e}")
         
         if not results:
              results.append({**general_info, '名称': 'N/A', '品牌': 'N/A', '规格型号': 'N/A', '数量': 'N/A', '单价': 'N/A'})
@@ -56,9 +56,9 @@ class ShandongGovParser(BaseParser):
 
 # --- 模块入口函数 ---
 def get_parser_for_url(url: str):
-    # 两个链接都使用同一个解析器
+    # 假设中央和地方公告结构一致
     if "/dfgg/" in url or "/zygg/" in url:
-        return ShandongGovParser()
+        return GuangxiGovParser()
     return None
 
 def get_dynamic_html(url, parser_type='local'):
@@ -84,23 +84,19 @@ def get_dynamic_html(url, parser_type='local'):
 
 # # --- 独立测试代码 ---
 # if __name__ == '__main__':
-#     urls_to_test = {
-#         "local": "https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202411/t20241126_23718366.htm",
-#         "central": "https://www.ccgp.gov.cn/cggg/zygg/zbgg/202408/t20240813_22885446.htm"
-#     }
-#     for name, url in urls_to_test.items():
-#         print(f"\n--- 正在测试山东 {name} 公告 ---")
-#         html_content = get_dynamic_html(url)
-#         if html_content:
-#             parser = get_parser_for_url(url)
-#             if parser:
-#                 data = parser.parse(html_content)
-#                 print(f"✅ 解析成功，找到 {len(data)} 条记录。")
-#                 if len(data) == 1:
-#                     print("✅ 规范检查通过：只返回一条记录。")
-#                     data[0]['采购方式'] = 'N/A' # 补充字段
-#                     for key, value in data[0].items():
-#                         print(f"  {key}: {value}")
-#                 else:
-#                     print(f"❌ 规范检查失败：返回了 {len(data)} 条记录，应为1条。")
-#         print("-" * 30)
+#     url_to_test = "https://www.ccgp.gov.cn/cggg/dfgg/zbgg/202504/t20250409_24414401.htm"
+#     print(f"\n--- 正在测试广西公告 ---")
+#     html_content = get_dynamic_html(url_to_test)
+#     if html_content:
+#         parser = get_parser_for_url(url_to_test)
+#         if parser:
+#             data = parser.parse(html_content)
+#             print(f"✅ 解析成功，找到 {len(data)} 条记录。")
+#             if len(data) == 1:
+#                 print("✅ 规范检查通过：只返回一条记录。")
+#                 data[0]['采购方式'] = 'N/A' # 补充字段
+#                 for key, value in data[0].items():
+#                     print(f"  {key}: {value}")
+#             else:
+#                 print(f"❌ 规范检查失败：返回了 {len(data)} 条记录，应为1条。")
+#     print("-" * 30) 
