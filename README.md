@@ -91,7 +91,17 @@ python gui_app.py
 5.  Monitor the progress in the log window.
 6.  Find the results in the `output/` directory upon completion.
 
-### 2. Command-Line Interface (for advanced users)
+### 3. Converting CSV to Excel
+
+After running the crawler, you can convert the generated `.csv` files into a more user-friendly Excel (`.xlsx`) format.
+
+**Run the converter:**
+```bash
+python converter.py
+```
+This script will automatically scan the `output/` directory and convert all existing `.csv` files to `.xlsx` files.
+
+### 4. Command-Line Interface (for advanced users)
 
 You can also run the spider directly from the command line.
 
