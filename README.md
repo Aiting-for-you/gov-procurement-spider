@@ -1,6 +1,15 @@
 # China Government Procurement Spider
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 A sophisticated and modular web scraping solution designed to extract and parse public procurement announcements from the official Chinese Government Procurement website (ccgp.gov.cn). This tool is built to handle complex, dynamic, and varied page structures across different provinces, providing structured data from announcements.
+
+---
+
+## 🌟 Project Status
+
+**This project is under active development.** New parsers for additional provinces are being added, and existing ones are continuously improved for better accuracy and resilience. Contributions are welcome!
 
 ---
 
@@ -33,8 +42,8 @@ A sophisticated and modular web scraping solution designed to extract and parse 
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd gov_procurement_spider
+    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
+    cd gov-procurement-spider
     ```
 
 2.  **Create and activate a virtual environment (recommended):**
@@ -92,3 +101,25 @@ elif 'new_province' in province_identifier: # Add your new province here
     return get_parser_for_url(url)
 # ...
 ``` 
+
+---
+
+## 🤝 Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+-   **Reporting Issues**: If you find a bug or have a suggestion, please open an issue.
+-   **Adding Parsers**: The most valuable way to contribute is by adding a new parser for a province not yet supported. Please follow the `parser_module_specification.md` guide.
+-   **Pull Requests**: Feel free to fork the repo and submit a pull request for any improvements.
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## ⚖️ Disclaimer
+
+This tool is intended for educational and research purposes only. The data is scraped from public government websites, and its accuracy depends on the source. Please use this tool responsibly and in accordance with the terms of service of ccgp.gov.cn. The developers are not responsible for any misuse of this software.

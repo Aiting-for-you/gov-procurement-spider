@@ -1,6 +1,15 @@
 # 中国政府采购网爬虫
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 一个功能强大且模块化的网络爬虫，专为提取和解析中国政府采购网 (ccgp.gov.cn) 的公开采购公告而设计。该工具能够处理不同省份复杂、动态和多样的页面结构，并提供结构化的公告数据。
+
+---
+
+## 🌟 项目状态
+
+**本项目正处于活跃开发阶段。** 我们正在不断为新的省份添加解析器，并持续优化现有解析器的准确性和稳定性。欢迎大家参与贡献！
 
 ---
 
@@ -33,8 +42,8 @@
 
 1.  **克隆代码仓库:**
     ```bash
-    git clone <your-repository-url>
-    cd gov_procurement_spider
+    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
+    cd gov-procurement-spider
     ```
 
 2.  **创建并激活虚拟环境 (推荐):**
@@ -92,3 +101,25 @@ elif 'new_province' in province_identifier: # 在此处添加你的新省份
     return get_parser_for_url(url)
 # ...
 ``` 
+
+---
+
+## 🤝 如何贡献
+
+开源社区因贡献而充满活力。我们**非常感谢**您对本项目的任何贡献。
+
+-   **报告问题**: 如果您发现任何错误或有改进建议，请提交一个 Issue。
+-   **添加解析器**: 最有价值的贡献方式是为尚未支持的省份添加新的解析器。请遵循 `parser_module_specification.md` 指南。
+-   **提交拉取请求 (Pull Request)**: 欢迎您 Fork 本项目，并为任何改进提交拉取请求。
+
+---
+
+## 📜 许可协议
+
+本项目采用 MIT 许可协议。详情请参阅 [LICENSE](LICENSE) 文件。
+
+---
+
+## ⚖️ 免责声明
+
+本工具仅供教育和研究目的使用。所有数据均从公开的政府网站抓取，其准确性取决于数据源。请负责任地使用本工具，并遵守 ccgp.gov.cn 的服务条款。开发者对任何不当使用本软件的行为不承担责任。
