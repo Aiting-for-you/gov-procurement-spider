@@ -1,9 +1,9 @@
-beautifulsoup4
-lxml
-selenium
-webdriver-manager
-pandas
-requests
 customtkinter
 Pillow
 tkcalendar
+selenium
+webdriver-manager
+pandas
+openpyxl
+lxml
+beautifulsoup4

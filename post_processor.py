@@ -43,7 +43,7 @@ def process_file(input_path, logger=None):
 
             if any('详见附件' in s for s in [name_str, spec_str, count_str, price_str]):
                 log_message(f"    - ℹ️  第 {index + 2} 行包含 '详见附件'，跳过拆分。")
-                row_dict['split_status'] = 'attachment'
+                # row_dict['split_status'] = 'attachment'
                 new_rows.append(row_dict)
                 continue
 
@@ -77,7 +77,7 @@ def process_file(input_path, logger=None):
                     new_item['规格型号'] = specs[i]
                     new_item['数量'] = counts[i]
                     new_item['单价'] = prices[i]
-                    new_item['split_status'] = 'ok'
+                    # new_item['split_status'] = 'ok'
                     new_rows.append(new_item)
             else:
                 # --- INVALID: Do not split ---
@@ -86,13 +86,11 @@ def process_file(input_path, logger=None):
                 is_single = all(l <= 1 for l in all_lengths)
                 if not is_single:
                     log_message(f"    - ⚠️ 第 {index + 2} 行未通过核心列对齐校验 (核心: {core_lengths}, 辅助: {non_core_lengths})，跳过拆分。")
-                    row_dict['split_status'] = 'mismatched'
-                else:
-                    row_dict['split_status'] = 'single_item'
+                    # row_dict['split_status'] = 'mismatched'
                 new_rows.append(row_dict)
 
+        log_message(f"✅ 后处理完成，共生成 {len(new_rows)} 行数据。")
         if not new_rows:
-            log_message("🤷‍♂️ 文件处理后没有数据。")
             return None
 
         processed_df = pd.DataFrame(new_rows)
