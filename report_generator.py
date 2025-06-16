@@ -49,17 +49,17 @@ def clean_numeric_value(value_str):
     """Cleans a string to extract a numeric value."""
     if pd.isna(value_str) or not isinstance(value_str, str) or value_str.strip() in ['N/A', '']:
         return 'N/A'
-    cleaned_str = re.sub(r'[^\d.]', '', str(value_str))
+    cleaned_str = re.sub(r'[^\d.]', '', value_str)
     try:
         val = float(cleaned_str)
         return int(val) if val == int(val) else val
     except (ValueError, TypeError):
-        return value_str
+        return 'N/A'
 
 def create_formatted_report(input_csv_path, logger=None):
     """
     Reads the raw CSV, gets the processed (split) data, intelligently formats it, 
-    and writes to a new final report CSV.
+    and writes to a new final report CSV with '备注' and '网址' columns.
     """
     def log_message(msg):
         if logger and hasattr(logger, 'put'):
@@ -80,13 +80,32 @@ def create_formatted_report(input_csv_path, logger=None):
         formatted_data = []
         for index, row in df.iterrows():
             try:
-                remark = '' # Reset remark, can be re-implemented if needed
+                remark = ''
+                status = row.get('split_status')
+                
+                # Rule 1: Check split status from post_processor
+                if status == 'mismatched':
+                    remark = '核心参数数量不匹配'
+                elif status == 'attachment':
+                    remark = '参数见附件'
+                
+                # The old "see attachment" text check is now handled by the status 'attachment'
+                # but we can keep it as a fallback just in case.
+                if not remark:
+                    raw_text_fields = [str(row.get(k, '')) for k in ['名称', '规格型号', '数量', '单价']]
+                    if any('详见附件' in field for field in raw_text_fields):
+                        remark = '参数见附件'
 
                 spec, model = parse_spec_and_model(row.get('名称'), row.get('规格型号'))
                 
-                # Unconditionally clean numeric values for all rows
-                quantity = clean_numeric_value(row.get('数量'))
-                unit_price = clean_numeric_value(row.get('单价'))
+                # Final check: Only clean numeric values if the row was successfully split.
+                # Otherwise, preserve the original text to avoid data corruption.
+                if status == 'ok':
+                    quantity = clean_numeric_value(str(row.get('数量')))
+                    unit_price = clean_numeric_value(str(row.get('单价')))
+                else:
+                    quantity = row.get('数量', '')
+                    unit_price = row.get('单价', '')
 
                 new_row = {
                     '项目名称': row.get('项目名称', 'N/A'),
@@ -97,7 +116,7 @@ def create_formatted_report(input_csv_path, logger=None):
                     '数量(台)': quantity,
                     '中标单价(元)': unit_price,
                     '中标公示日期': row.get('发布日期', 'N/A'),
-                    '备注': remark, # This will be empty now
+                    '备注': remark,
                     '网址': row.get('链接', 'N/A')
                 }
                 formatted_data.append(new_row)
@@ -111,7 +130,10 @@ def create_formatted_report(input_csv_path, logger=None):
             return None
 
         final_columns = ['项目名称', '中标单位', '品牌', '规格', '型号', '数量(台)', '中标单价(元)', '中标公示日期', '备注', '网址']
-        df_formatted = pd.DataFrame(formatted_data, columns=final_columns)
+        df_formatted = pd.DataFrame(formatted_data, columns=final_columns + ['split_status'])
+        
+        # --- Final Step: Drop the status column before writing to file ---
+        df_formatted.drop(columns=['split_status'], inplace=True, errors='ignore')
         
         directory, filename = os.path.split(input_csv_path)
         name, _ = os.path.splitext(filename)
