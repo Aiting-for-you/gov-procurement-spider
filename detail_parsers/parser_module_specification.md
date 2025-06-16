@@ -1,200 +1,195 @@
-# 采购信息解析模块开发规范
+# 政府采购网解析器模块开发规范 (V2.0)
 
-## 1. 概述
-
-本文档旨在为新的省份采购信息解析模块提供统一的开发规范和接口标准。所有新模块**必须**严格遵守此规范，以确保能与主程序 (`main.py`) 无缝集成，无需对主程序进行任何修改。
-
-本文档以 `chongqing.py` 和 `jiangsu.py` 的最终成功版本为蓝本。
-
-## 2. 文件与目录结构
-
-- 所有省份解析模块都必须放置在 `detail_parsers/` 目录下。
-- 模块文件名必须为省份的汉语拼音小写，例如：`shandong.py`, `guangdong.py`。
-
-## 3. 模块内部结构
-
-每个省份的解析模块 (`.py` 文件) 必须包含以下三个核心组件：
-1.  一个或多个解析器类 (Parser Classes)。
-2.  一个 `get_parser_for_url(url)` 函数。
-3.  一个 `get_dynamic_html(url, parser_type)` 函数。
+本规范旨在统一各省份采购公告详情页解析器的开发标准，确保代码的健壮性、可维护性和数据提取的准确性。所有新的解析器或对现有解析器的重构都应遵循此规范。
 
 ---
 
-### 3.1 解析器类 (Parser Classes)
+## 一、 文件与类结构
 
-- **核心思想**: 一个省份的公告可能发布在多个不同的网站上（如省自己的采购网、国家统一的采购网），或者同一网站的不同栏目（如地方公告、中央公告）页面结构也不同。因此，**必须为每一种独特的页面布局创建一个专属的解析器类**。
-- **类数量**: 一个模块文件可能包含2个、3个甚至更多的解析器类。例如，`jiangsu.py` 就包含了三个解析器，分别处理：
-    1.  江苏省自己域名(`ccgp-jiangsu.gov.cn`)的公告。
-    2.  发布在中央域名下(`ccgp.gov.cn`)的江苏**地方**公告 (`/dfgg/`)。
-    3.  发布在中央域名下(`ccgp.gov.cn`)的江苏**中央**公告 (`/zygg/`)。
--   **命名规范**: 建议清晰地描述其用途，例如 `HubeiLocalGovParser` (湖北地方) 和 `HubeiCentralGovParser` (湖北中央)。
--   **核心方法**: 每个类必须实现一个 `parse(self, html: str)` 方法。
-
-#### `parse(self, html: str)` 方法详解
-
--   **参数**:
-    -   `html (str)`: 由 `get_dynamic_html` 函数获取到的、包含完整动态内容的页面HTML字符串。
--   **返回值**:
-    -   必须返回一个 **列表 (list)**，即使只解析出一条数据。
-    -   列表中的每个元素都是一个 **字典 (dict)**，代表一条中标信息。
-    -   如果页面没有解析到任何有效的标的信息，方法应返回一个空列表 `[]`。
-
--   **返回字典的字段规范 (重要！)**:
-    -   返回的字典**必须**包含以下 **13个** key，且key的名称必须完全一致。
-    -   如果某个字段在页面上无法找到，其 value 必须设置为字符串 `'N/A'`。
-    -   **严禁**在 `parse` 方法的返回字典中包含 `链接` 或 `省份` 字段，这两个字段由主程序 `main.py` 统一添加。
-
+1.  **文件名**: 必须为省份的全拼音小写，例如 `sichuan.py`, `chongqing.py`。
+2.  **`BaseParser` 类**: 每个模块必须包含一个 `BaseParser` 基类。**开发者不应修改此基类。**
     ```python
-    # 最终由主程序生成并写入CSV的完整字段
-    {
-        # --- 以下11个字段由各省解析器模块填充 ---
-        "发布日期": "YYYY年MM月DD日" or "N/A",
-        "项目号": "xxxx" or "N/A",
-        "采购方式": "公开招标" or "N/A", # 注意：此字段如页面没有，则固定为'N/A'
-        "项目名称": "xxxx" or "N/A",
-        "供应商名称": "xxxx" or "N/A",
-        "中标金额": "xxxx" or "N/A",
-        "名称": "货物名称" or "N/A",     # 主要标的物名称
-        "品牌": "xxxx" or "N/A",
-        "规格型号": "xxxx" or "N/A",
-        "数量": "x台" or "N/A",
-        "单价": "xxxx元" or "N/A",
-
-        # --- 以下2个字段由主程序main.py自动添加 ---
-        "链接": "http://...",
-        "省份": "Hubei"
-    }
+    class BaseParser:
+        def parse(self, html: str):
+            raise NotImplementedError
     ```
-
--   **核心原则：一条公告一条记录**: 无论一个公告页面中包含多少个包、多少行标的物信息，解析器**必须**只提取最主要、最相关的一条信息（通常是表格的第一条有效记录），最终确保 `parse` 方法返回的列表中只包含 **一个** 字典元素。
-
----
-
-### 3.2 `get_parser_for_url(url)` 函数
-
-这是模块被主程序调用的入口之一。
-
--   **功能**: 根据传入的公告详情页 `url`，判断其类型（中央或地方），并返回对应解析器类的一个**实例**。
--   **函数签名**: `def get_parser_for_url(url: str):`
--   **实现逻辑与最佳实践**:
-    - **判断顺序至关重要**。必须将最特殊、最精确的URL特征放在最前面判断。
-    - **最佳实践范例 (来自`jiangsu.py`)**:
-      ```python
-      def get_parser_for_url(url: str):
-          """根据URL特征返回最合适的解析器实例"""
-          if "ccgp-jiangsu.gov.cn" in url:
-              # 1. 最优先判断省份自己的独特域名
-              return JiangsuLocalGovParser()
-          elif "/dfgg/" in url:
-              # 2. 其次判断是否为在中央网站发布的"地方公告"
-              return JiangsuCentralLocalGovParser()
-          elif "/zygg/" in url:
-              # 3. 最后判断是否为"中央公告"
-              return JiangsuCentralGovParser()
-          return None # 所有情况均不匹配
-      ```
--   **返回值**:
-    -   返回一个对应解析器类的**实例**。
-    -   如果无法为URL找到合适的解析器，返回 `None`。
+3.  **解析器类**:
+    *   必须继承自 `BaseParser`。
+    *   命名应能清晰反映其处理的公告类型，例如 `SichuanCentralGovParser` (中央公告), `SichuanLocalGovParser` (地方公告)。
+    *   一个文件内可以包含多个解析器类，以应对同一省份下不同的页面结构（如中央公告 vs. 地方公告）。
 
 ---
 
-### 3.3 `get_dynamic_html(url, parser_type)` 函数
+## 二、 `parse` 方法实现规范
 
-这是模块被主程序调用的另一个入口。
+`parse` 方法是解析器的核心，负责从给定的 HTML 文本中提取数据。
 
--   **功能**: 使用 Selenium 和 WebDriver 获取指定 `url` 的动态HTML内容。
--   **函数签名**: `def get_dynamic_html(url, parser_type='local'):`
-    -   **注意**: `parser_type` 参数是为了兼容主程序 `main.py` 的调用而保留的，即使在模块内部两个类型的页面等待逻辑完全相同，也**必须保留**此参数。
--   **实现逻辑**:
-    -   初始化 Selenium WebDriver。
-    -   `driver.get(url)`
-    -   使用 `WebDriverWait` 等待页面关键元素加载完成（例如 `body` 或某个特定的容器 `div`）。
-    -   返回 `driver.page_source`。
-    -   在 `finally` 块中确保 `driver.quit()` 被调用。
+### 1. 返回值规范
 
-## 4. 模块代码模板
+*   `parse` 方法必须返回一个 **列表 (list)**。
+*   列表中的每个元素都是一个 **字典 (dict)**，代表一条完整的采购记录。
+*   即使页面只包含一条记录，也必须返回包含单个字典的列表，例如 `[{"项目名称": "...", ...}]`。
+*   如果页面没有解析到任何有效数据，应返回一个 **空列表 `[]`**。
 
-以下是一个可供复制和修改的完整模块模板。开发者需要填充 `... # TODO: ...` 部分的逻辑。
+### 2. 字段规范
+
+每个返回的字典必须包含以下所有字段。如果某个字段在页面上不存在，其值应为字符串 `'N/A'`。
 
 ```python
-# detail_parsers/template.py
+{
+    "发布日期": "YYYY-MM-DD",
+    "项目号": "...",
+    "采购方式": "...",
+    "项目名称": "...",
+    "供应商名称": "...",
+    "中标金额": "...", # 应包含单位，如 '1,024.00元' 或 '123.45万元'
+    "名称": "...",
+    "品牌": "...",
+    "规格型号": "...",
+    "数量": "...",
+    "单价": "..."
+}
+```
 
-from bs4 import BeautifulSoup
-import re
+### 3. 解析策略最佳实践
+
+#### 3.1. 优先使用正则表达式提取非表格数据
+
+对于"项目号"、"项目名称"、"供应商名称"等通常散落在正文段落中的信息，应优先使用正则表达式从整个内容 `div` 的纯文本中提取。这比依赖不稳定的标签（如 `<p>`, `<strong>`）或其顺序更可靠。
+
+**优秀实践**:
+```python
+# 1. 先获取整个内容容器的纯文本
+content_div = soup.select_one('div.vF_detail_content')
+content_text = content_div.get_text('\n', strip=True) if content_div else ''
+
+# 2. 使用 re.search 配合捕获组提取信息
+project_name_match = re.search(r'二、项目名称[：:\s]*([^\n]+)', content_text)
+if project_name_match:
+    item['项目名称'] = project_name_match.group(1).strip()
+else:
+    # 3. 提供备用方案，例如直接使用页面标题
+    item['项目名称'] = soup.select_one('h2.tc').get_text(strip=True)
+```
+
+#### 3.2. 稳健地定位数据表格
+
+不应依赖表格的 `id` 或 `class`，因为它们易变。最佳实践是先找到一个确定的、不易改变的表头单元格，然后通过它反向查找父级 `<table>` 元素。
+
+**优秀实践**:
+```python
+# 方法一：通过表头文字定位
+main_table = soup.find('td', string=re.compile(r'^\s*货物名称\s*$'))
+if main_table:
+    main_table = main_table.find_parent('table')
+
+# 方法二：如果方法一失败，通过标题段落定位
+if not main_table:
+    table_title = soup.find('p', string=re.compile(r'四、主要标的信息'))
+    if table_title:
+        main_table = table_title.find_next('table')
+
+# 后续在 main_table 的范围内进行解析...
+```
+
+#### 3.3. 处理"详见附件"和单元格内换行
+
+*   **直接提取文本**: 如果"规格型号"、"品牌"等字段内明确写着"详见附件"或"见清单"，解析器应**直接提取这些文本**作为字段的值，而不是返回 `N/A`。
+*   **处理 `<br>` 换行**: 很多页面使用 `<br>` 在一个 `<td>` 内罗列多个物品。应使用 `.get_text(separator='<br>')` 或 `.stripped_strings` 来处理这种情况。
+
+**优秀实践**:
+```python
+def parse_multiline_cell(cell):
+    """处理一个可能包含 <br> 标签的单元格"""
+    if not cell:
+        return 'N/A'
+    # 使用 .stripped_strings 可以优雅地处理多行和空格
+    lines = [line for line in cell.stripped_strings]
+    return '；'.join(lines) if lines else 'N/A'
+
+# ... 在表格解析循环中 ...
+cols = row.select('td')
+if len(cols) > 4:
+    item['规格型号'] = parse_multiline_cell(cols[4])
+```
+
+#### 3.4. 数据有效性校验
+
+在 `parse` 方法的最后，返回数据前，应进行一次简单的健全性检查，以过滤掉完全无效的空记录。
+
+**优秀实践**:
+```python
+# 在 return 之前
+if item["项目名称"] == "N/A" and item["供应商名称"] == "N/A":
+    return [] # 如果关键信息都缺失，则视作无效记录
+
+return [item]
+```
+
+---
+
+## 三、 模块级必要函数
+
+每个省份的解析器模块文件都必须提供以下两个与类平级的函数。
+
+### 1. `get_parser_for_url(url: str)`
+
+*   **功能**: 根据传入的 `url`，判断并返回一个最合适的解析器**实例**。
+*   **逻辑**: 通常通过 `url` 中包含的特定路径（如 `/zygg/` 或 `/dfgg/`）来判断。
+*   **规范**: 如果所有情况都不匹配，必须返回 `None`。
+
+**示例**:
+```python
+def get_parser_for_url(url: str):
+    """根据URL特征返回最合适的解析器实例"""
+    if "/dfgg/" in url:
+        return ChongqingLocalGovParser()
+    elif "/zygg/" in url:
+        return ChongqingCentralGovParser()
+    return None
+```
+
+### 2. `get_dynamic_html(url: str)`
+
+*   **功能**: 使用 `Selenium` 获取指定 `url` 的动态渲染后的 HTML 内容。
+*   **规范**:
+    *   必须使用 `headless` 无头模式。
+    *   必须包含异常处理（如 `TimeoutException`），在加载失败时应打印日志并返回 `None`。
+    *   必须在 `finally` 块中调用 `driver.quit()` 以确保浏览器进程被关闭。
+    *   推荐使用 `webdriver_manager` 自动管理 `ChromeDriver`。
+
+**示例**:
+```python
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
-# 开发者无需修改 BaseParser
-class BaseParser:
-    def parse(self, html: str):
-        raise NotImplementedError
-
-# --- 地方公告解析器 ---
-class TemplateLocalGovParser(BaseParser):
-    def parse(self, html: str):
-        soup = BeautifulSoup(html, 'lxml')
-        results = []
-        
-        # ... TODO: 在这里编写地方公告的解析逻辑 ...
-        
-        # 示例：
-        # parsed_item = {
-        #     "发布日期": "N/A",
-        #     "项目号": "N/A",
-        #     # ... (所有11个字段)
-        # }
-        # results.append(parsed_item)
-
-        return results
-
-# --- 中央公告解析器 ---
-class TemplateCentralGovParser(BaseParser):
-    def parse(self, html: str):
-        soup = BeautifulSoup(html, 'lxml')
-        results = []
-
-        # ... TODO: 在这里编写中央公告的解析逻辑 ...
-
-        return results
-
-# --- 模块必要函数 (开发者需按需修改类名) ---
-def get_parser_for_url(url: str):
-    """根据URL返回合适的解析器实例"""
-    if "/dfgg/" in url:
-        return TemplateLocalGovParser() # 注意修改类名
-    elif "/zygg/" in url:
-        return TemplateCentralGovParser() # 注意修改类名
-    return None
-
-def get_dynamic_html(url, parser_type='local'):
-    """获取动态HTML，函数签名和基础逻辑保持不变"""
+def get_dynamic_html(url: str) -> str:
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    # ... 其他推荐选项 ...
     
     driver = None
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         driver.get(url)
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+        # 等待一个页面加载完成的关键元素
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.vF_detail_content"))
         )
-        html = driver.page_source
+        return driver.page_source
     except TimeoutException:
         print(f"页面加载超时: {url}")
-        html = None
+        return None
+    except Exception as e:
+        print(f"获取动态HTML时发生错误: {e}")
+        return None
     finally:
         if driver:
             driver.quit()
-    return html
 ``` 
