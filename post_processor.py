@@ -5,10 +5,9 @@ import traceback
 
 def process_file(input_path, logger=None):
     """
-    Processes a raw CSV file based on a 'Core Column Alignment' principle.
-    - Core columns for alignment: '规格型号', '数量', '单价'
-    - A row is split ONLY IF all core columns have the exact same number of items (>1).
-    - Other columns ('名称', '品牌') can be broadcast if they have 1 item.
+    Processes a raw CSV file using a prioritized delimiter approach.
+    It iterates through a list of delimiters. For each row, it uses the first
+    delimiter that successfully splits the 'core columns' into an equal number of items.
     """
     def log_message(msg):
         if logger and hasattr(logger, 'put'):
@@ -25,11 +24,12 @@ def process_file(input_path, logger=None):
         name, ext = os.path.splitext(filename)
         output_path = os.path.join(directory, f"{name}_processed.csv")
         
-        log_message(f"▶️ 开始使用[核心列对齐]原则处理文件: {filename}")
+        log_message(f"▶️ 开始使用[分隔符优先级]原则处理文件: {filename}")
 
         df = pd.read_csv(input_path).fillna('')
         new_rows = []
-        delimiter = r'[、；,\n]'
+        # 分隔符按优先级排序：分号 > 顿号 > 换行符 > 竖线
+        prioritized_delimiters = [';', '；', '、', '\n', '|']
 
         for index, row in df.iterrows():
             row_dict = row.to_dict()
@@ -47,45 +47,51 @@ def process_file(input_path, logger=None):
                 new_rows.append(row_dict)
                 continue
 
-            # --- Split all columns into lists of non-empty items ---
-            names = [s.strip() for s in re.split(delimiter, name_str) if s.strip()]
-            brands = [s.strip() for s in re.split(delimiter, brand_str) if s.strip()]
-            specs = [s.strip() for s in re.split(delimiter, spec_str) if s.strip()]
-            counts = [s.strip() for s in re.split(delimiter, count_str) if s.strip()]
-            prices = [s.strip() for s in re.split(delimiter, price_str) if s.strip()]
-            
-            # --- Define Core and Non-Core columns for validation ---
-            core_lengths = [len(specs), len(counts), len(prices)]
-            non_core_lengths = [len(names), len(brands)]
-            
-            # --- Apply new validation logic ---
-            # 1. All core columns must have the same length.
-            # 2. That length must be greater than 1 for splitting to be needed.
-            is_core_aligned = len(set(core_lengths)) == 1
-            num_items = core_lengths[0] if is_core_aligned else 0
-            
-            # 3. Non-core columns must have length 1 (for broadcasting) or the same length as core columns.
-            are_non_core_valid = all(l == 1 or l == num_items for l in non_core_lengths)
+            split_successful = False
+            for delim in prioritized_delimiters:
+                # --- Attempt to split core columns with the current delimiter ---
+                # The regex needs to be just the delimiter itself, not a character class
+                specs = [s.strip() for s in re.split(re.escape(delim), spec_str) if s.strip()]
+                counts = [s.strip() for s in re.split(re.escape(delim), count_str) if s.strip()]
+                prices = [s.strip() for s in re.split(re.escape(delim), price_str) if s.strip()]
 
-            if is_core_aligned and num_items > 1 and are_non_core_valid:
-                # --- VALID: Split the row ---
-                log_message(f"    - ✅ 第 {index + 2} 行通过核心列对齐校验 ({core_lengths})，拆分为 {num_items} 条记录。")
-                for i in range(num_items):
-                    new_item = row_dict.copy()
-                    new_item['名称'] = names[i if len(names) == num_items else 0]
-                    new_item['品牌'] = brands[i if len(brands) == num_items else 0]
-                    new_item['规格型号'] = specs[i]
-                    new_item['数量'] = counts[i]
-                    new_item['单价'] = prices[i]
-                    new_item['split_status'] = 'ok'
-                    new_rows.append(new_item)
-            else:
-                # --- INVALID: Do not split ---
-                # Check if it was a real mismatch or just a single-item row
-                all_lengths = core_lengths + non_core_lengths
+                core_lengths = [len(specs), len(counts), len(prices)]
+                
+                # --- Check for core alignment ---
+                is_core_aligned = len(set(core_lengths)) == 1
+                num_items = core_lengths[0] if is_core_aligned else 0
+
+                if is_core_aligned and num_items > 1:
+                    # --- If core is aligned, check non-core columns ---
+                    names = [s.strip() for s in re.split(re.escape(delim), name_str) if s.strip()]
+                    brands = [s.strip() for s in re.split(re.escape(delim), brand_str) if s.strip()]
+                    non_core_lengths = [len(names), len(brands)]
+                    
+                    are_non_core_valid = all(l == 1 or l == num_items for l in non_core_lengths)
+
+                    if are_non_core_valid:
+                        # --- SUCCESS: Split the row and break from the delimiter loop ---
+                        log_message(f"    - ✅ 第 {index + 2} 行使用分隔符 '{delim}' 成功匹配，拆分为 {num_items} 条。")
+                        for i in range(num_items):
+                            new_item = row_dict.copy()
+                            new_item['名称'] = names[i if len(names) == num_items else 0]
+                            new_item['品牌'] = brands[i if len(brands) == num_items else 0]
+                            new_item['规格型号'] = specs[i]
+                            new_item['数量'] = counts[i]
+                            new_item['单价'] = prices[i]
+                            new_item['split_status'] = 'ok'
+                            new_rows.append(new_item)
+                        
+                        split_successful = True
+                        break # Exit the delimiter loop for this row
+
+            if not split_successful:
+                # --- Did not split: Append original row ---
+                all_lengths = [len(re.split(r'[、；;\n|]', s)) for s in [name_str, brand_str, spec_str, count_str, price_str]]
                 is_single = all(l <= 1 for l in all_lengths)
+                
                 if not is_single:
-                    log_message(f"    - ⚠️ 第 {index + 2} 行未通过核心列对齐校验 (核心: {core_lengths}, 辅助: {non_core_lengths})，跳过拆分。")
+                    log_message(f"    - ⚠️ 第 {index + 2} 行未使用任何优先分隔符成功匹配，跳过拆分。")
                     row_dict['split_status'] = 'mismatched'
                 else:
                     row_dict['split_status'] = 'single_item'

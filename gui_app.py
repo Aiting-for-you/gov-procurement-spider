@@ -249,13 +249,14 @@ class App(ctk.CTk):
             logging.error(traceback.format_exc())
 
     def start_formatting_thread(self):
+        """Starts the report formatting process in a new thread."""
         if not self.last_raw_csv_path or not os.path.exists(self.last_raw_csv_path):
-            messagebox.showerror("错误", "找不到可用的原始数据文件进行格式化。")
+            messagebox.showerror("错误", "未找到有效的原始CSV文件。请先成功完成一次爬取。")
             return
-
-        self.task_start("正在格式化...")
-        logging.info(f"--- 开始对 {os.path.basename(self.last_raw_csv_path)} 进行规范化 ---")
         
+        self.task_start("正在格式化报告...")
+        logging.info(f"📄 开始格式化报告: {os.path.basename(self.last_raw_csv_path)}")
+
         threading.Thread(
             target=self.run_format_process_in_thread,
             args=(self.last_raw_csv_path,),
@@ -263,53 +264,94 @@ class App(ctk.CTk):
         ).start()
 
     def run_format_process_in_thread(self, file_path):
-        command = [sys.executable, "main.py", "--format_report", file_path]
+        """
+        Executes the main.py script as a subprocess to format the report.
+        Captures and queues its output for real-time display in the GUI.
+        """
         try:
+            command = [sys.executable, 'main.py', '--format_report', file_path]
+            # Use Popen for real-time output reading
             process = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, encoding='utf-8',
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, # Redirect stderr to stdout
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                bufsize=1
             )
+
+            # Read output line by line
             for line in iter(process.stdout.readline, ''):
-                logging.info(line.strip())
+                self.root_logger.info(line.strip()) # Use logger to send to queue
+
             process.stdout.close()
-            process.wait()
-            
-            if process.returncode == 0:
+            return_code = process.wait()
+
+            if return_code == 0:
                 self.log_queue.put("FORMAT_COMPLETE")
             else:
                 self.log_queue.put("FORMAT_FAILED")
+
         except Exception:
-            logging.error("格式化子进程启动或执行失败。")
-            logging.error(traceback.format_exc())
+            self.root_logger.error("执行格式化子进程时发生严重错误。")
+            self.root_logger.error(traceback.format_exc())
             self.log_queue.put("FORMAT_FAILED")
 
     def task_start(self, status_text):
-        """Generic function to call when a long-running task starts."""
-        self.start_button.configure(state="disabled", text=status_text)
-        self.format_button.configure(state="disabled")
+        """Generic function to disable buttons and show progress when a task starts."""
+        self.start_button.configure(state="disabled")
         self.convert_button.configure(state="disabled")
-        
+        self.format_button.configure(state="disabled")
         self.progressbar.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
         self.progressbar.start()
-        
         self.log_textbox.configure(state="normal")
         self.log_textbox.delete("1.0", tk.END)
         self.log_textbox.configure(state="disabled")
 
     def task_complete(self, failed=False):
-        """Generic function to call when a long-running task completes."""
-        self.start_button.configure(state="normal", text="开始爬取")
-        # Only re-enable format button if a file is available
-        if self.last_raw_csv_path and os.path.exists(self.last_raw_csv_path):
-            self.format_button.configure(state="normal")
-        self.convert_button.configure(state="normal")
-        
+        """Generic function to re-enable buttons and stop progress when a task finishes."""
         self.progressbar.stop()
         self.progressbar.grid_forget()
+        self.start_button.configure(state="normal")
+        self.convert_button.configure(state="normal")
+        # The format button is only enabled on crawl success, not here.
+        if self.last_raw_csv_path and os.path.exists(self.last_raw_csv_path):
+            self.format_button.configure(state="normal")
+        else:
+            self.format_button.configure(state="disabled")
+
+        if failed:
+            messagebox.showerror("任务失败", "任务执行失败，请检查日志获取详细信息。")
+        else:
+            # Only show success message if it wasn't a failure
+            # messagebox.showinfo("任务完成", "任务已成功执行。") # This can be annoying
+            pass
+
+def main():
+    # Set the script's directory as the current working directory
+    # This is crucial for PyInstaller to find relative paths like 'main.py'
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    # Set up a fallback logger for GUI startup issues
+    try:
+        ctk.set_appearance_mode("System")
+        ctk.set_default_color_theme("blue")
+        app = App()
+        app.mainloop()
+    except Exception as e:
+        # If the GUI fails to start, log it to a file
+        logging.basicConfig(filename='gui_startup_error.log', level=logging.ERROR,
+                            format='%(asctime)s %(levelname)s:%(message)s')
+        logging.error("GUI failed to start")
+        logging.error(traceback.format_exc())
+        # Also try to show a simple Tkinter message box
+        try:
+            root = tk.Tk()
+            root.withdraw() # Hide the main window
+            messagebox.showerror("严重错误", f"GUI启动失败: {e}\n详情请见 gui_startup_error.log")
+        except:
+            pass # If even Tkinter fails, we've done all we can.
 
 if __name__ == "__main__":
-    ctk.set_appearance_mode("System")
-    ctk.set_default_color_theme("blue")
-    app = App()
-    app.mainloop()
+    main()

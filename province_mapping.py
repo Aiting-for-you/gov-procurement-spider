@@ -1,7 +1,6 @@
 # This file provides mappings between province names in Chinese and Pinyin.
 
 PROVINCE_PINYIN_MAP = {
-    "安徽": "anhui",
     "重庆": "chongqing",
     "广东": "guangdong",
     "广西": "guangxi",

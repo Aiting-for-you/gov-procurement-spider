@@ -168,7 +168,7 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
         ]
         final_columns = [col for col in standard_columns if col in df.columns]
         df = df[final_columns]
-        df.to_csv(filename, index=False, encoding='utf-8-sig')
+        df.to_csv(filename, index=False, encoding='utf-8-sig', na_rep='N/A')
         logger.info(f"\n🎉 成功抓取 {len(all_results)} 条数据，已保存到 {filename}")
         if log_queue: log_queue.put(f"CRAWL_SUCCESS:{filename}")
     else:

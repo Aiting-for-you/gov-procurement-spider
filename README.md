@@ -1,55 +1,87 @@
-# China Government Procurement Spider
+# China Government Procurement Data Scraper
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![UI Framework](https://img.shields.io/badge/UI-CustomTkinter-blue)](https://github.com/TomSchimansky/CustomTkinter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A sophisticated and modular web scraping solution for extracting and parsing public procurement announcements from China's official government procurement website (ccgp.gov.cn). This tool features a user-friendly graphical interface and a robust, extensible backend, making it easy to gather structured data across various provinces.
-
----
-
-## 🌟 Project Status
-
-**This project is under active development.** New parsers for additional provinces are being added, and existing ones are continuously improved for better accuracy and resilience. Contributions are welcome!
+A powerful, modular, and user-friendly web scraping tool designed to extract and parse public procurement announcements from China's official government procurement website (ccgp.gov.cn). It features a robust, extensible backend and an intuitive graphical interface, making it easy to gather structured data across various provinces.
 
 ---
 
-## ✨ Features
+## 📖 Table of Contents
 
-- **User-Friendly GUI**: An intuitive graphical interface built with `CustomTkinter` that allows you to:
-    - Select provinces from a dropdown menu.
-    - Freely enter any search keywords.
-    - Choose date ranges with a calendar.
-    - View real-time logs directly in the app.
-- **Multi-Province Support**: Comes with dedicated parsers for multiple provinces. The current supported list includes:
-    > Anhui, Chongqing, Guangdong, Guangxi, Hebei, Hubei, Jiangsu, Shandong, Sichuan, Zhejiang
-- **Modular Architecture**: Each province's parser is a self-contained module, making it easy to extend, maintain, and debug.
-- **Robust Parsing Engine**: Utilizes `Selenium` and `BeautifulSoup` to handle complex, dynamic, and varied page structures.
-- **Data Export**: Saves extracted data into structured `.csv` files, ready for analysis.
-- **Extensible**: Includes a clear specification (`parser_module_specification.md`) for creating new parser modules.
-- **Easy to Use**: Packaged as a standalone `.exe`. No need to install Python or any dependencies. Just download and run!
+- [Core Features](#-core-features)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Installation Guide](#-installation-guide)
+- [How to Use](#-how-to-use)
+- [How to Contribute](#-how-to-contribute)
+- [License](#-license)
+- [Disclaimer](#-disclaimer)
 
 ---
 
-## 💾 Download
+## ✨ Core Features
 
-For the easiest way to get started, simply download the latest release from the **[Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases)** page.
-
-1.  Go to the [Releases](https://github.com/Aiting-for-you/gov-procurement-spider/releases) page.
-2.  Download the `GovSpider.zip` file from the latest release.
-3.  Unzip the file.
-4.  Double-click `政府采购爬虫.exe` to run the application.
+- **Intuitive GUI**: A clean graphical interface built with `CustomTkinter` that allows users to:
+  - Select a province from a dropdown menu.
+  - Specify search keywords.
+  - Select a date range using calendar widgets.
+  - View real-time logs directly within the application.
+  - Convert all scraped CSV files to a single Excel file with one click.
+- **Modular & Extensible Architecture**: Each province's parser is a self-contained module, making it easy to add new provinces, perform maintenance, and debug. A clear specification (`parser_module_specification.md`) is provided for guidance.
+- **Robust Scraping Engine**: Utilizes `Selenium` to handle dynamic web pages and `BeautifulSoup` for efficient HTML parsing, ensuring reliability across varied page structures.
+- **Automated Testing Suite**: Includes a batch testing script (`batch_test.py`) to verify the functionality of all provincial parsers, ensuring stability and code quality.
+- **Flexible Data Export**: Saves extracted data into structured `.csv` files and includes a built-in converter to merge them into a single, organized `.xlsx` file.
+- **Centralized Configuration**: Province mappings are managed in a single file (`province_mapping.py`), simplifying the process of adding or removing provinces.
 
 ---
 
-## 🚀 Getting Started (for Developers)
+## 🛠️ Tech Stack
+
+- **Backend**: Python 3.9+
+- **Scraping**: Selenium, BeautifulSoup4
+- **GUI**: CustomTkinter, Tkinter
+- **Data Handling**: Pandas
+- **Packaging**: PyInstaller
+
+---
+
+## 📁 Project Structure
+
+```
+gov-procurement-spider/
+│
+├── detail_parsers/         # Contains individual parser modules for each province.
+├── output/                 # Default directory for storing output CSV and Excel files.
+│
+├── .gitignore              # Specifies files to be ignored by Git.
+├── batch_test.py           # Script to test all province parsers automatically.
+├── config.py               # Configuration settings (e.g., timeouts).
+├── converter.py            # Script to convert CSV files to a single Excel file.
+├── gui_app.py              # Main application file for the GUI.
+├── LICENSE                 # Project's MIT License file.
+├── logger_config.py        # Configuration for logging.
+├── main.py                 # Main script for the command-line interface.
+├── province_mapping.py     # Central mapping of province names to parser modules.
+├── README.md               # English README file.
+├── README_CN.md            # Chinese README file.
+├── report_generator.py     # (Future Use) For generating formatted reports.
+├── requirements.txt        # Lists all Python dependencies for the project.
+├── search_parser.py        # Parser for the search results list pages.
+└── url_builder.py          # Constructs the search URLs.
+```
+
+---
+
+## ⚙️ Installation Guide
 
 ### Prerequisites
 
-- Python 3.9+
-- Google Chrome browser installed
+- Python 3.9 or newer.
+- Google Chrome browser installed.
 
-### Installation
+### Setup Steps
 
 1.  **Clone the repository:**
     ```bash
@@ -60,86 +92,75 @@ For the easiest way to get started, simply download the latest release from the 
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
     # On Windows
-    python -m venv venv && venv\Scripts\activate
-    # On macOS/Linux
-    python -m venv venv && source venv/bin/activate
+    python -m venv venv
+    venv\Scripts\activate
+
+    # On macOS & Linux
+    python3 -m venv venv
+    source venv/bin/activate
     ```
 
-3.  **Install the dependencies:**
+3.  **Install the required dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
 
 ---
 
-## 🛠️ Usage
+## 🚀 How to Use
 
-### 1. Graphical User Interface (Recommended)
+The application can be run via the graphical user interface (recommended) or the command line.
 
-The easiest way to use the spider is through the GUI.
+### 1. Using the GUI
 
-**Launch the application:**
+Launch the application by running:
 ```bash
 python gui_app.py
 ```
 
-**How to use:**
-1.  Select a province from the dropdown menu.
-2.  Enter your desired search keyword.
-3.  Set the start and end dates using the calendar widgets.
-4.  Click the "Start Crawling" button.
-5.  Monitor the progress in the log window.
-6.  Find the results in the `output/` directory upon completion.
+**Workflow:**
+1.  **Select Province**: Choose a province from the dropdown menu.
+2.  **Enter Keyword**: Type the search term you are interested in.
+3.  **Set Date Range**: Use the calendar widgets to define the start and end dates.
+4.  **Choose Output Directory**: Click the button to select where you want to save the files (defaults to `output/`).
+5.  **Start Crawling**: Click the "Start Crawling" button to begin the process.
+6.  **Monitor Progress**: Watch the log window for real-time updates.
+7.  **Convert to Excel**: After crawling is complete, click "Convert Results to Excel" to generate a single `.xlsx` file.
 
-### 3. Converting CSV to Excel
+### 2. Using the Command-Line Interface (CLI)
 
-After running the crawler, you can convert the generated `.csv` files into a more user-friendly Excel (`.xlsx`) format.
-
-**Run the converter:**
-```bash
-python converter.py
-```
-This script will automatically scan the `output/` directory and convert all existing `.csv` files to `.xlsx` files.
-
-### 4. Command-Line Interface (for advanced users)
-
-You can also run the spider directly from the command line.
-
-**Launch the CLI:**
+For advanced users or automated workflows, you can use the CLI.
 ```bash
 python main.py
 ```
-The script will then prompt you to enter the province (in Chinese), keyword, start date, and end date.
+The script will prompt you to enter the province, keyword, start date, and end date.
 
 ---
 
-## 🔧 How to Extend with a New Province Parser
+## 🤝 How to Contribute
 
-To add support for a new province, follow these steps:
+Contributions are welcome! If you'd like to improve the tool or add a new feature, please follow these steps.
 
-1.  **Create a new Python file** in the `detail_parsers/` directory (e.g., `new_province.py`).
-2.  **Implement a parser class** that inherits from `BaseParser` and implements the `parse(self, html: str)` method, following the logic in `parser_module_specification.md`.
-3.  **Update the province map** in `gui_app.py` and `main.py` to include the Chinese name and pinyin of the new province.
-4.  That's it! The GUI and CLI will automatically detect the new parser file and add it to the selection list.
+### Adding a New Province Parser
 
----
-
-## 🤝 Contributing
-
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
--   **Reporting Issues**: If you find a bug or have a suggestion, please open an issue.
--   **Adding Parsers**: The most valuable way to contribute is by adding a new parser for a province not yet supported.
--   **Pull Requests**: Feel free to fork the repo and submit a pull request for any improvements.
+1.  **Create Parser File**: Create a new Python file in the `detail_parsers/` directory (e.g., `hainan.py`).
+2.  **Implement Parser Class**: Inside the new file, create a class that inherits from `BaseParser` and implements the `parse(self, html: str)` method. Refer to existing parsers for examples and `parser_module_specification.md` for guidelines.
+3.  **Update Province Map**: Open `province_mapping.py` and add the new province's Chinese name and its corresponding pinyin name to the `PROVINCE_PINYIN_MAP` dictionary.
+4.  **Add a Test Case**: Open `batch_test.py` and add a test URL for your new province to the `TEST_CASES` dictionary.
+5.  **Run Tests**: Execute the batch test script to ensure your new parser works correctly and doesn't break existing ones.
+    ```bash
+    python batch_test.py
+    ```
+6.  **Submit a Pull Request**: Once all tests pass, commit your changes and open a pull request!
 
 ---
 
 ## 📜 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
 ---
 
 ## ⚖️ Disclaimer
 
-This tool is intended for educational and research purposes only. The data is scraped from public government websites, and its accuracy depends on the source. Please use this tool responsibly and in accordance with the terms of service of ccgp.gov.cn. The developers are not responsible for any misuse of this software.
+This tool is intended for educational and research purposes only. All data is scraped from public government websites, and its accuracy depends entirely on the source. The developers of this tool are not responsible for any misuse of the software. Please use this tool responsibly and in accordance with the terms of service of ccgp.gov.cn.
