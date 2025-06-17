@@ -85,7 +85,7 @@ gov-procurement-spider/
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
+    git clone https://gitee.com/into-the-desert/gov_procurement_spider.git
     cd gov-procurement-spider
     ```
 
