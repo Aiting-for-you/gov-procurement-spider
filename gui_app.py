@@ -20,9 +20,21 @@ from PIL import Image
 from province_mapping import PROVINCE_PINYIN_MAP, get_chinese_province_list
 
 
+# --- Helper Function for Pathing ---
+def get_base_path():
+    """ Get the base path for the application, handling frozen (packaged) state. """
+    if getattr(sys, 'frozen', False):
+        # The application is running as a bundled executable
+        return os.path.dirname(sys.executable)
+    else:
+        # The application is running in a normal Python environment
+        return os.path.dirname(os.path.abspath(__file__))
+
 # --- Constants ---
 # The single source of truth for provinces is now province_mapping.py
 CHINESE_PROVINCES = get_chinese_province_list()
+BASE_PATH = get_base_path()
+DEFAULT_OUTPUT_DIR = os.path.join(BASE_PATH, "output")
 
 
 class App(ctk.CTk):
@@ -83,7 +95,12 @@ class App(ctk.CTk):
         
         self.output_dir_button = ctk.CTkButton(self.input_frame, text="选择保存目录", command=self.select_output_directory)
         self.output_dir_button.grid(row=4, column=0, padx=10, pady=10, sticky="w")
-        self.output_dir = os.path.abspath("output")
+        
+        # Ensure the default output directory exists
+        if not os.path.exists(DEFAULT_OUTPUT_DIR):
+            os.makedirs(DEFAULT_OUTPUT_DIR)
+            
+        self.output_dir = DEFAULT_OUTPUT_DIR
         self.output_dir_label = ctk.CTkLabel(self.input_frame, text=f"保存在: {self.output_dir}", wraplength=450, justify="left")
         self.output_dir_label.grid(row=4, column=1, columnspan=2, padx=10, pady=10, sticky="w")
 

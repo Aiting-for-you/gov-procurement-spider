@@ -50,7 +50,7 @@ class ChongqingCentralGovParser(BaseParser):
         if supplier_match:
             item['供应商名称'] = supplier_match.group(1).strip()
 
-        amount_match = re.search(r'中标（成交）金额[：:\s]*([\d,.]+\s*(?:元|万元))', content_text)
+        amount_match = re.search(r'中标（成交）金额[：:\s]*([\d,.]+\s*（\s*(?:元|万元)\s*）)', content_text)
         if amount_match:
             item['中标金额'] = amount_match.group(1).strip()
 
