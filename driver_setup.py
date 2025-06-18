@@ -1,43 +1,82 @@
-import os
+import undetected_chromedriver as uc
 import sys
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
+import os
 from selenium.common.exceptions import WebDriverException
+
+# A global reference to prevent premature garbage collection
+_global_driver_ref = None
+
+class WebDriverManager:
+    _driver = None
+
+    @classmethod
+    def get_webdriver(cls):
+        """
+        Returns a globally unique instance of the webdriver.
+        If the driver doesn't exist or has been quit, it creates a new one.
+        """
+        global _global_driver_ref
+        if cls._driver is None:
+            print("[WebDriverManager] No active driver found. Creating a new one.")
+            try:
+                options = uc.ChromeOptions()
+                options.add_argument('--headless')
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-gpu')
+                options.add_argument("window-size=1920,1080")
+                
+                # undetected_chromedriver handles driver management automatically
+                cls._driver = uc.Chrome(options=options, version_main=114)
+                _global_driver_ref = cls._driver # Assign to global reference
+                print(f"[WebDriverManager] New driver created with ID: {id(cls._driver)}")
+            except Exception as e:
+                print(f"[WebDriverManager] Failed to create webdriver: {e}")
+                raise
+        return cls._driver
+
+    @classmethod
+    def quit_webdriver(cls):
+        """
+        Quits the globally managed webdriver instance if it exists.
+        """
+        global _global_driver_ref
+        if cls._driver is not None:
+            print(f"[WebDriverManager] Quitting driver with ID: {id(cls._driver)}")
+            try:
+                cls._driver.quit()
+            except Exception as e:
+                print(f"[WebDriverManager] Error while quitting driver: {e}")
+            finally:
+                cls._driver = None
+                _global_driver_ref = None # Clear the global reference
+                print("[WebDriverManager] Driver has been quit and instance is reset to None.")
+
+# For backward compatibility, we can provide top-level functions
+def get_webdriver():
+    return WebDriverManager.get_webdriver()
+
+def quit_webdriver():
+    WebDriverManager.quit_webdriver()
 
 def get_webdriver():
     """
-    Initializes and returns a Selenium WebDriver instance using the local chromedriver.
-    It combines configurations from both main.py and detail parsers.
-    Handles both script execution and PyInstaller bundled execution.
+    Initializes and returns a Selenium WebDriver instance using undetected-chromedriver
+    to avoid bot detection.
     """
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--log-level=3")
-    options.add_argument("--disable-gpu")
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    
-    # Path setup
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # Running in a PyInstaller bundle
-        base_path = sys._MEIPASS
-    else:
-        # Running as a normal script
-        # Assumes driver_setup.py is at the project root
-        base_path = os.path.abspath(".")
-        
-    chrome_driver_path = os.path.join(base_path, "assets", "chromedriver.exe")
-    
-    if not os.path.exists(chrome_driver_path):
-        raise FileNotFoundError(f"ChromeDriver not found at the specified path: {chrome_driver_path}")
-
-    service = Service(executable_path=chrome_driver_path)
-    
     try:
-        driver = webdriver.Chrome(service=service, options=options)
+        options = uc.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument("window-size=1920,1080")
+        
+        # undetected_chromedriver handles driver management automatically
+        driver = uc.Chrome(options=options)
         return driver
-    except WebDriverException as e:
-        # Re-raise the exception to be handled by the caller
-        raise WebDriverException(f"Failed to create WebDriver: {e.msg}") 
+        
+    except Exception as e:
+        print(f"初始化 (undetected) WebDriver 时出错: {e}")
+        # Re-raise a generic exception that the caller can handle
+        raise WebDriverException(f"Failed to create undetected WebDriver: {e}") 

@@ -20,7 +20,7 @@ from url_builder import build_ccgp_search_url
 from driver_setup import get_webdriver
 
 
-def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_date, output_dir='output', log_queue=None):
+def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_date, output_dir='output', log_queue=None, max_pages=10):
     """
     重构后的主流程，负责处理列表页抓取和详情页解析调度。
     """
@@ -53,16 +53,9 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
             
     # 3. 初始化Selenium WebDriver
     all_results = []
-    driver = None
     try:
-        try:
-            driver = get_webdriver()
-        except (WebDriverException, FileNotFoundError) as e:
-            logger.error(f"无法启动WebDriver: {e}")
-            logger.error("请确保 'assets/chromedriver.exe' 存在且版本兼容。")
-            if log_queue: log_queue.put("CRAWL_FAILED")
-            return
-
+        driver = get_webdriver()
+        logger.info(f"[DIAGNOSTIC] Driver created in main.py with ID: {id(driver)}")
         # 4. 循环抓取所有列表页，获取详情页链接
         page = 1
         all_detail_links = []
@@ -72,7 +65,7 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
             driver.get(search_url)
 
             try:
-                WebDriverWait(driver, 10).until(
+                WebDriverWait(driver, 20).until(
                     EC.any_of(
                         EC.presence_of_element_located((By.CSS_SELECTOR, ".vT-srch-result-list-bid li a")),
                         EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '抱歉，没有找到相关数据')]"))
@@ -96,12 +89,18 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
                 all_detail_links.extend(page_links)
                 logger.info(f"    找到 {len(page_links)} 个链接，累计 {len(all_detail_links)} 个。")
 
-                next_button = driver.find_element(By.LINK_TEXT, "下一页")
-                driver.execute_script("arguments[0].click();", next_button)
+                # 只检查"下一页"按钮是否存在，不再点击，翻页由 page 参数和 build_ccgp_search_url 控制
+                driver.find_element(By.LINK_TEXT, "下一页")
                 page += 1
                 time.sleep(2)
+
+                if page > max_pages:
+                    logger.info(f"已达到最大页数限制 ({max_pages}页)，抓取结束。")
+                    break
             except TimeoutException:
-                logger.info("📭 页面加载超时或未找到结果列表，结束列表抓取。")
+                screenshot_path = os.path.join(output_dir, f"timeout_screenshot_page_{page}.png")
+                driver.save_screenshot(screenshot_path)
+                logger.info(f"📭 页面加载超时或未找到结果列表，已保存截图至 {screenshot_path}，结束列表抓取。")
                 break
             except NoSuchElementException:
                 logger.info("✅ 没有'下一页'按钮，列表抓取完成。")
@@ -140,33 +139,16 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
                 logger.error(f"        ❌ 解析时发生错误: {e}")
 
     except Exception as e:
-        logger.error(f"抓取过程中发生未知严重错误: {e}")
-        logger.error(f"详细堆栈信息: {traceback.format_exc()}")
-        if log_queue: log_queue.put("CRAWL_FAILED")
-        return
+        logger.error(f"抓取过程中发生未知错误: {e}")
+        logger.error(traceback.format_exc())
+        # No longer quit the driver here
     finally:
-        if driver:
-            driver.quit()
+        logger.info("抓取主流程结束。Driver instance is kept alive for GUI.")
 
-    # 6. 保存结果
-    if all_results:
-        df = pd.DataFrame(all_results)
-        standard_columns = [
-            "发布日期", "项目号", "采购方式", "项目名称", "供应商名称",
-            "中标金额", "名称", "品牌", "规格型号", "数量", "单价",
-            "链接", "省份"
-        ]
-        final_columns = [col for col in standard_columns if col in df.columns]
-        df = df[final_columns]
-        df.to_csv(filename, index=False, encoding='utf-8-sig', na_rep='N/A')
-        logger.info(f"\n🎉 成功抓取 {len(all_results)} 条数据，已保存到 {filename}")
-        if log_queue: log_queue.put(f"CRAWL_SUCCESS:{filename}")
-    else:
-        logger.info("\n🤷‍♀️ 本次任务未找到任何可解析的数据。")
-
-    if log_queue: log_queue.put("CRAWL_COMPLETE")
-    return filename
-
+    logger.info(f"抓取任务完成，原始数据已保存到: {filename}")
+    
+    # No longer return the driver
+    
 
 def main():
     parser = argparse.ArgumentParser(description="政府采购数据爬虫")
@@ -175,6 +157,7 @@ def main():
     parser.add_argument("--start_date", help="开始日期 (YYYY-MM-DD)")
     parser.add_argument("--end_date", help="结束日期 (YYYY-MM-DD)")
     parser.add_argument("--output", default="output", help="输出目录")
+    parser.add_argument("--pages", type=int, default=10, help="最大抓取页数")
     args = parser.parse_args()
 
     # Setup a general logger for the main script
@@ -187,16 +170,22 @@ def main():
     if not province_cn:
         parser.error(f"无效的省份拼音: '{args.province}'")
 
-    # When running from CLI, we don't have a queue. The logger will just print to console/file.
-    start_crawl_process(
-        args.province,
-        province_cn,
-        args.keyword,
-        args.start_date,
-        args.end_date,
-        args.output,
-        log_queue=None 
-    )
+    try:
+        # The function no longer returns a driver
+        start_crawl_process(
+            province_pinyin=args.province,
+            province_cn=province_cn,
+            keyword=args.keyword,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            output_dir=args.output,
+            max_pages=args.pages
+        )
+    finally:
+        # When running from CLI, we need a way to close the global driver
+        from driver_setup import quit_webdriver
+        print("CLI模式运行完成，正在关闭浏览器...")
+        quit_webdriver()
 
 if __name__ == "__main__":
     main()

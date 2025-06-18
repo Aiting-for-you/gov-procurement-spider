@@ -3,6 +3,31 @@ import os
 import re
 import traceback
 
+def intelligent_split(text: str, delimiter: str):
+    """
+    Splits a string by a delimiter and then processes each part to separate 
+    a name from a model in parentheses.
+    
+    Returns a tuple of two lists: (names, models)
+    """
+    names, models = [], []
+    # Don't split if delimiter is not in the string
+    if delimiter not in text:
+        text_list = [text]
+    else:
+        text_list = [s.strip() for s in text.split(delimiter)]
+        
+    for part in text_list:
+        match = re.search(r'(.+?)\s*[（(](.+?)[)）]$', part)
+        if match:
+            names.append(match.group(1).strip())
+            models.append(match.group(2).strip())
+        else:
+            # If no parenthesis, the whole part is the name/spec, and model is N/A
+            names.append(part)
+            models.append('N/A')
+    return names, models
+
 def process_file(input_path, logger=None):
     """
     Processes a raw CSV file using a prioritized delimiter approach.
@@ -50,22 +75,20 @@ def process_file(input_path, logger=None):
             split_successful = False
             for delim in prioritized_delimiters:
                 # --- Attempt to split core columns with the current delimiter ---
-                # The regex needs to be just the delimiter itself, not a character class
-                specs = [s.strip() for s in re.split(re.escape(delim), spec_str) if s.strip()]
-                counts = [s.strip() for s in re.split(re.escape(delim), count_str) if s.strip()]
-                prices = [s.strip() for s in re.split(re.escape(delim), price_str) if s.strip()]
+                new_names, new_specs = intelligent_split(spec_str, delim)
+                counts = [s.strip() for s in count_str.split(delim) if s.strip()]
+                prices = [s.strip() for s in price_str.split(delim) if s.strip()]
 
-                core_lengths = [len(specs), len(counts), len(prices)]
+                core_lengths = [len(new_specs), len(counts), len(prices)]
                 
                 # --- Check for core alignment ---
-                is_core_aligned = len(set(core_lengths)) == 1
+                is_core_aligned = all(x == core_lengths[0] for x in core_lengths)
                 num_items = core_lengths[0] if is_core_aligned else 0
 
                 if is_core_aligned and num_items > 1:
                     # --- If core is aligned, check non-core columns ---
-                    names = [s.strip() for s in re.split(re.escape(delim), name_str) if s.strip()]
-                    brands = [s.strip() for s in re.split(re.escape(delim), brand_str) if s.strip()]
-                    non_core_lengths = [len(names), len(brands)]
+                    brands = [s.strip() for s in brand_str.split(delim) if s.strip()]
+                    non_core_lengths = [len(new_names), len(brands)]
                     
                     are_non_core_valid = all(l == 1 or l == num_items for l in non_core_lengths)
 
@@ -74,9 +97,9 @@ def process_file(input_path, logger=None):
                         log_message(f"    - ✅ 第 {index + 2} 行使用分隔符 '{delim}' 成功匹配，拆分为 {num_items} 条。")
                         for i in range(num_items):
                             new_item = row_dict.copy()
-                            new_item['名称'] = names[i if len(names) == num_items else 0]
+                            new_item['名称'] = new_names[i]
                             new_item['品牌'] = brands[i if len(brands) == num_items else 0]
-                            new_item['规格型号'] = specs[i]
+                            new_item['规格型号'] = new_specs[i]
                             new_item['数量'] = counts[i]
                             new_item['单价'] = prices[i]
                             new_item['split_status'] = 'ok'

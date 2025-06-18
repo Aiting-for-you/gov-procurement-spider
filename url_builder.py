@@ -14,7 +14,7 @@ PROVINCE_ZONE_MAP = {
 }
 
 def build_ccgp_search_url(province: str, start_date: str, end_date: str, keyword="空调", page=1) -> str:
-    """构造政府采购网搜索URL（货物类，中标公告）"""
+    """构造政府采购网搜索URL（所有品目，中标公告）"""
     zone_id = PROVINCE_ZONE_MAP.get(province)
     if not zone_id:
         raise ValueError(f"省份未支持：{province}")
@@ -22,7 +22,7 @@ def build_ccgp_search_url(province: str, start_date: str, end_date: str, keyword
     return (
         "https://search.ccgp.gov.cn/bxsearch?"
         f"searchtype=1&page_index={page}&bidSort=0&buyerName=&projectId="
-        f"&pinMu=1&bidType=7&dbselect=bidx"
+        f"&pinMu=0&bidType=7&dbselect=bidx"
         f"&kw={quote(keyword)}"
         f"&start_time={start_date.replace('-', ':')}"
         f"&end_time={end_date.replace('-', ':')}"

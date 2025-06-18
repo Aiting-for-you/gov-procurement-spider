@@ -101,9 +101,16 @@ gov-procurement-spider/
 1.  **克隆仓库**
 
     ```bash
-    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
+    git clone https://gitee.com/into-the-desert/gov_procurement_spider.git
     cd gov-procurement-spider
     ```
+
+    **分支选择:**
+    - **当前分支 (master)**: 使用本地 ChromeDriver 以增强兼容性
+    - **替代分支**: 如果您不希望使用本地 ChromeDriver 版本，可以切换到 `no-local-chromedriver` 分支:
+      ```bash
+      git checkout no-local-chromedriver
+      ```
 
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
