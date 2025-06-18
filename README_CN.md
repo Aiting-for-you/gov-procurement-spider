@@ -83,10 +83,11 @@ gov-procurement-spider/
 
 ### 安装步骤
 
-1.  **克隆代码仓库:**
+1.  **克隆代码仓库并切换到正确分支:**
     ```bash
-    git clonehttps://gitee.com/into-the-desert/gov_procurement_spider.git
+    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
     cd gov-procurement-spider
+    git checkout no-local-chromedriver
     ```
 
 2.  **创建并激活虚拟环境 (推荐):**
