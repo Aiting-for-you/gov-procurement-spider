@@ -4,11 +4,10 @@ from bs4 import BeautifulSoup
 import re
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from driver_setup import get_webdriver
 
 # 规范：开发者无需修改 BaseParser
 class BaseParser:
@@ -167,27 +166,18 @@ def get_dynamic_html(url, parser_type='local'):
     获取动态HTML，函数签名和基础逻辑保持不变。
     parser_type 在此模块中未使用，但为兼容主程序而保留。
     """
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    
     driver = None
     try:
-        # 使用 webdriver_manager 自动管理 ChromeDriver
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        driver = get_webdriver()
         driver.get(url)
         # 等待页面主要内容区域加载完成
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "div.vF_detail_content"))
         )
         html = driver.page_source
-    except TimeoutException:
-        print(f"页面加载超时: {url}")
-        html = None # 超时返回 None
+    except (TimeoutException, WebDriverException, FileNotFoundError) as e:
+        print(f"处理页面时出错: {url}, 错误: {e}")
+        html = None # 出错返回 None
     finally:
         if driver:
             driver.quit()

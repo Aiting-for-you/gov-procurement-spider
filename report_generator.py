@@ -150,6 +150,45 @@ def create_formatted_report(input_csv_path, logger=None):
         log_message(traceback.format_exc())
         return None
 
+def format_report_from_path(file_path=None, logger=None):
+    """
+    Finds the latest CSV file in the 'output' directory if no path is provided,
+    and then calls create_formatted_report.
+    This function is designed to be called directly, replacing the CLI logic.
+    """
+    def log_message(msg):
+        if logger and hasattr(logger, 'put'):
+            logger.put(msg)
+        elif logger: # For standard loggers
+             logger.info(msg)
+        else:
+            print(msg)
+
+    target_file = file_path
+    if not target_file or target_file is True:
+        output_dir = 'output'
+        if not os.path.isdir(output_dir):
+            log_message(f"❌ 错误：输出目录 'output' 不存在。")
+            return None
+            
+        # Find the latest non-report, non-processed CSV file
+        files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) 
+                 if f.endswith('.csv') and not f.endswith('_report.csv') and not f.endswith('_processed.csv')]
+        
+        if not files:
+            log_message("❌ 错误：在 'output' 目录中未找到可格式化的CSV文件。")
+            return None
+        
+        target_file = max(files, key=os.path.getctime)
+        log_message(f"ℹ️ 未指定文件，自动选择最新的文件进行格式化: {os.path.basename(target_file)}")
+
+    if not os.path.exists(target_file):
+        log_message(f"❌ 错误：指定的文件不存在: {target_file}")
+        return None
+        
+    return create_formatted_report(target_file, logger)
+
+
 if __name__ == '__main__':
     class ConsoleLogger:
         def put(self, message):

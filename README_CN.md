@@ -40,10 +40,11 @@
 ## 🛠️ 技术栈
 
 - **后端**: Python 3.9+
-- **网络爬虫**: Selenium, BeautifulSoup4
+- **网络爬虫**: Selenium 配合本地 ChromeDriver, BeautifulSoup4
 - **图形界面**: CustomTkinter, Tkinter
 - **数据处理**: Pandas
 - **打包工具**: PyInstaller
+- **浏览器引擎**: 本地 ChromeDriver（可执行文件版本中已包含）
 
 ---
 
@@ -76,12 +77,26 @@ gov-procurement-spider/
 
 ## ⚙️ 安装指南
 
-### 环境要求
+### 方式一：可执行文件版本（推荐非开发人员使用）
+
+**适用于希望直接使用工具而无需配置开发环境的用户：**
+
+1. 下载包含可执行文件的最新发布包
+2. 将压缩文件解压到您希望的位置
+3. 直接运行 `.exe` 文件 - 无需额外配置！
+4. 可执行文件已包含所有必要的依赖项和 ChromeDriver
+
+### 方式二：开发环境配置
+
+**适用于开发者或希望从源代码运行的用户：**
+
+#### 环境要求
 
 - Python 3.9 或更高版本
 - 已安装 Google Chrome 浏览器
+- **注意**：此版本使用本地 ChromeDriver 以增强兼容性
 
-### 安装步骤
+#### 安装步骤
 
 1.  **克隆代码仓库:**
     ```bash

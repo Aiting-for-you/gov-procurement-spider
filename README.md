@@ -40,10 +40,11 @@ A powerful, modular, and user-friendly web scraping tool designed to extract and
 ## 🛠️ Tech Stack
 
 - **Backend**: Python 3.9+
-- **Scraping**: Selenium, BeautifulSoup4
+- **Scraping**: Selenium with local ChromeDriver, BeautifulSoup4
 - **GUI**: CustomTkinter, Tkinter
 - **Data Handling**: Pandas
 - **Packaging**: PyInstaller
+- **Browser Engine**: Local ChromeDriver (included in executable version)
 
 ---
 
@@ -76,12 +77,26 @@ gov-procurement-spider/
 
 ## ⚙️ Installation Guide
 
-### Prerequisites
+### Option 1: Ready-to-Use Executable (Recommended for Non-Developers)
 
-- Python 3.9 or newer.
-- Google Chrome browser installed.
+**For users who want to use the tool without setting up a development environment:**
 
-### Setup Steps
+1. Download the latest release package containing the executable file
+2. Extract the compressed file to your desired location
+3. Run the `.exe` file directly - no additional setup required!
+4. The executable includes all necessary dependencies and ChromeDriver
+
+### Option 2: Development Setup
+
+**For developers or users who want to run from source code:**
+
+#### Prerequisites
+
+- Python 3.9 or newer
+- Google Chrome browser installed
+- **Note**: This version uses a local ChromeDriver for enhanced compatibility
+
+#### Setup Steps
 
 1.  **Clone the repository:**
     ```bash

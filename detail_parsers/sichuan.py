@@ -8,8 +8,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
+from driver_setup import get_webdriver
 
 class BaseParser:
     def parse(self, html: str):
@@ -162,22 +163,17 @@ def get_parser_for_url(url: str):
         return SichuanLocalGovParser()
     return None
 
-def get_dynamic_html(url: str) -> str:
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-    service = Service(ChromeDriverManager().install())
+def get_dynamic_html(url):
     driver = None
     try:
-        driver = webdriver.Chrome(service=service, options=options)
+        driver = get_webdriver()
         driver.get(url)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "vF_detail_content"))
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.vF_detail_content"))
         )
         return driver.page_source
-    except TimeoutException:
-        print(f"页面加载超时: {url}")
+    except (TimeoutException, WebDriverException, FileNotFoundError) as e:
+        print(f"处理页面时出错: {url}, 错误: {e}")
         return None
     finally:
         if driver:

@@ -15,6 +15,7 @@ import traceback
 from logger_config import QueueHandler
 from main import start_crawl_process
 from converter import run_converter
+from report_generator import format_report_from_path
 from PIL import Image
 # Centralize province data by importing from the new mapping file
 from province_mapping import PROVINCE_PINYIN_MAP, get_chinese_province_list
@@ -34,6 +35,7 @@ def get_base_path():
 # The single source of truth for provinces is now province_mapping.py
 CHINESE_PROVINCES = get_chinese_province_list()
 BASE_PATH = get_base_path()
+# The output directory is now reliably inside the base path.
 DEFAULT_OUTPUT_DIR = os.path.join(BASE_PATH, "output")
 
 
@@ -282,36 +284,20 @@ class App(ctk.CTk):
 
     def run_format_process_in_thread(self, file_path):
         """
-        Executes the main.py script as a subprocess to format the report.
-        Captures and queues its output for real-time display in the GUI.
+        Calls the report generator function directly.
         """
         try:
-            command = [sys.executable, 'main.py', '--format_report', file_path]
-            # Use Popen for real-time output reading
-            process = subprocess.Popen(
-                command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, # Redirect stderr to stdout
-                text=True,
-                encoding='utf-8',
-                errors='replace',
-                bufsize=1
-            )
-
-            # Read output line by line
-            for line in iter(process.stdout.readline, ''):
-                self.root_logger.info(line.strip()) # Use logger to send to queue
-
-            process.stdout.close()
-            return_code = process.wait()
-
-            if return_code == 0:
+            # The root logger is already configured to use the queue handler.
+            # We can pass it directly to the function.
+            result_path = format_report_from_path(file_path, logger=self.root_logger)
+            
+            if result_path:
                 self.log_queue.put("FORMAT_COMPLETE")
             else:
                 self.log_queue.put("FORMAT_FAILED")
 
         except Exception:
-            self.root_logger.error("执行格式化子进程时发生严重错误。")
+            self.root_logger.error("执行格式化时发生严重错误。")
             self.root_logger.error(traceback.format_exc())
             self.log_queue.put("FORMAT_FAILED")
 
@@ -346,9 +332,8 @@ class App(ctk.CTk):
             pass
 
 def main():
-    # Set the script's directory as the current working directory
-    # This is crucial for PyInstaller to find relative paths like 'main.py'
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # Set the script's directory as the current working directory first
+    os.chdir(BASE_PATH)
 
     # Set up a fallback logger for GUI startup issues
     try:

@@ -17,10 +17,7 @@ from province_mapping import get_province_pinyin
 from logger_config import get_logger, QueueHandler
 from report_generator import create_formatted_report
 from url_builder import build_ccgp_search_url
-
-# webdriver-manager is now a dependency
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from driver_setup import get_webdriver
 
 
 def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_date, output_dir='output', log_queue=None):
@@ -58,18 +55,11 @@ def start_crawl_process(province_pinyin, province_cn, keyword, start_date, end_d
     all_results = []
     driver = None
     try:
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--log-level=3")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        
         try:
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=chrome_options)
-        except (WebDriverException, MaxRetryError, ValueError) as e:
+            driver = get_webdriver()
+        except (WebDriverException, FileNotFoundError) as e:
             logger.error(f"无法启动WebDriver: {e}")
-            logger.error("请确保Chrome浏览器已正确安装且ChromeDriver版本兼容。")
+            logger.error("请确保 'assets/chromedriver.exe' 存在且版本兼容。")
             if log_queue: log_queue.put("CRAWL_FAILED")
             return
 
@@ -185,38 +175,10 @@ def main():
     parser.add_argument("--start_date", help="开始日期 (YYYY-MM-DD)")
     parser.add_argument("--end_date", help="结束日期 (YYYY-MM-DD)")
     parser.add_argument("--output", default="output", help="输出目录")
-    parser.add_argument(
-        "--format_report",
-        metavar="FILE_PATH",
-        nargs='?',
-        const=True,
-        default=False,
-        help="仅执行报告格式化功能。可选择性提供CSV文件路径，否则将在output文件夹中查找最新的CSV文件。"
-    )
     args = parser.parse_args()
 
     # Setup a general logger for the main script
     cli_logger = get_logger("main_cli")
-
-    if args.format_report:
-        # For formatting, we can just use the logger directly.
-        # The report generator will use this logger to print messages.
-        target_file = args.format_report
-        if target_file is True:
-            output_dir = 'output'
-            files = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.csv') and not f.endswith('_report.csv') and not f.endswith('_processed.csv')]
-            if not files:
-                cli_logger.error("错误：在 'output' 目录中未找到可格式化的CSV文件。")
-                exit(1)
-            target_file = max(files, key=os.path.getctime)
-            cli_logger.info(f"未指定文件，自动选择最新的文件进行格式化: {os.path.basename(target_file)}")
-
-        if not os.path.exists(target_file):
-            cli_logger.error(f"错误：指定的文件不存在: {target_file}")
-            exit(1)
-            
-        create_formatted_report(target_file, cli_logger)
-        exit(0)
 
     if not all([args.province, args.keyword, args.start_date, args.end_date]):
         parser.error("执行爬取任务时，必须提供 --province, --keyword, --start_date, 和 --end_date 参数。")
