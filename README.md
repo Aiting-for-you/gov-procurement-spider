@@ -83,10 +83,11 @@ gov-procurement-spider/
 
 ### Setup Steps
 
-1.  **Clone the repository:**
+1.  **Clone the repository and switch to the correct branch:**
     ```bash
-    git clone https://gitee.com/into-the-desert/gov_procurement_spider.git
+    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
     cd gov-procurement-spider
+    git checkout no-local-chromedriver
     ```
 
 2.  **Create and activate a virtual environment (recommended):**
