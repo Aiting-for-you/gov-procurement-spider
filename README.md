@@ -104,6 +104,13 @@ gov-procurement-spider/
     cd gov-procurement-spider
     ```
 
+    **Branch Selection:**
+    - **Current branch (master)**: Uses local ChromeDriver for enhanced compatibility
+    - **Alternative branch**: If you prefer not to use the local ChromeDriver version, you can switch to the `no-local-chromedriver` branch:
+      ```bash
+      git checkout no-local-chromedriver
+      ```
+
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
     # On Windows
