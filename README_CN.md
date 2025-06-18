@@ -100,7 +100,7 @@ gov-procurement-spider/
 
 1.  **克隆代码仓库:**
     ```bash
-    git clone https://gitee.com/into-the-desert/gov_procurement_spider.git
+    git clone https://github.com/Aiting-for-you/gov-procurement-spider.git
     cd gov-procurement-spider
     ```
 
